@@ -25538,19 +25538,24 @@ body {
 
   // src/services/ai.ts
   var MODEL_OPTIONS = [
-    // OpenAI
-    { provider: "openai", model: "gpt-4o", name: "GPT-4o", description: "\u6700\u65B0\u6700\u5F3A\uFF0C\u63A8\u8350\u4F7F\u7528" },
+    // OpenAI - 最新模型
+    { provider: "openai", model: "gpt-4.5-preview", name: "GPT-4.5 Preview", description: "\u6700\u65B0\u9884\u89C8\u7248\uFF0C\u80FD\u529B\u6700\u5F3A" },
+    { provider: "openai", model: "gpt-4o", name: "GPT-4o", description: "\u591A\u6A21\u6001\u65D7\u8230\u6A21\u578B" },
     { provider: "openai", model: "gpt-4o-mini", name: "GPT-4o Mini", description: "\u6027\u4EF7\u6BD4\u9AD8\uFF0C\u901F\u5EA6\u5FEB" },
-    { provider: "openai", model: "gpt-4-turbo", name: "GPT-4 Turbo", description: "\u5F3A\u5927\u7A33\u5B9A" },
-    // Claude
-    { provider: "claude", model: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", description: "\u6700\u65B0\u7248\u672C\uFF0C\u80FD\u529B\u5F3A" },
-    { provider: "claude", model: "claude-3-opus-20240229", name: "Claude 3 Opus", description: "\u6700\u5F3A\u63A8\u7406\u80FD\u529B" },
-    { provider: "claude", model: "claude-3-haiku-20240307", name: "Claude 3 Haiku", description: "\u5FEB\u901F\u54CD\u5E94" },
-    // Gemini
+    { provider: "openai", model: "o1", name: "o1", description: "\u6DF1\u5EA6\u63A8\u7406\u6A21\u578B" },
+    { provider: "openai", model: "o1-mini", name: "o1 Mini", description: "\u8F7B\u91CF\u63A8\u7406\u6A21\u578B" },
+    // Claude - 最新模型
+    { provider: "claude", model: "claude-opus-4", name: "Claude Opus 4", description: "\u6700\u65B0\u65D7\u8230\uFF0C\u80FD\u529B\u6700\u5F3A" },
+    { provider: "claude", model: "claude-sonnet-4", name: "Claude Sonnet 4", description: "\u5E73\u8861\u6027\u80FD\u4E0E\u901F\u5EA6" },
+    { provider: "claude", model: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", description: "\u7A33\u5B9A\u53EF\u9760" },
+    { provider: "claude", model: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", description: "\u5FEB\u901F\u54CD\u5E94" },
+    // Gemini - 最新模型
+    { provider: "gemini", model: "gemini-2.0-flash", name: "Gemini 2.0 Flash", description: "\u6700\u65B0\u7248\u672C\uFF0C\u901F\u5EA6\u5FEB" },
+    { provider: "gemini", model: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite", description: "\u8F7B\u91CF\u9AD8\u6548" },
     { provider: "gemini", model: "gemini-1.5-pro", name: "Gemini 1.5 Pro", description: "\u957F\u4E0A\u4E0B\u6587\u652F\u6301" },
-    { provider: "gemini", model: "gemini-1.5-flash", name: "Gemini 1.5 Flash", description: "\u5FEB\u901F\u9AD8\u6548" },
+    { provider: "gemini", model: "gemini-1.5-flash", name: "Gemini 1.5 Flash", description: "\u7A33\u5B9A\u5FEB\u901F" },
     // 兼容模型
-    { provider: "compatible", model: "custom", name: "\u81EA\u5B9A\u4E49\u6A21\u578B", description: "\u652F\u6301 OpenAI \u517C\u5BB9 API" }
+    { provider: "compatible", model: "custom", name: "\u81EA\u5B9A\u4E49\u6A21\u578B", description: "\u652F\u6301 OpenAI \u517C\u5BB9 API\uFF08Ollama/DeepSeek \u7B49\uFF09" }
   ];
   var CATEGORY_PROMPTS = {
     button: "\u8FD9\u662F\u4E00\u4E2A\u6309\u94AE\u6587\u6848\u3002\u8981\u6C42\uFF1A\u7B80\u77ED\u6709\u529B\uFF0C\u6700\u597D\u4EE5\u52A8\u8BCD\u5F00\u5934\uFF0C\u4E0D\u8D85\u8FC78\u4E2A\u5B57\u3002",

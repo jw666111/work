@@ -9,19 +9,24 @@ import {
 
 // 预设的模型选项
 export const MODEL_OPTIONS: ModelOption[] = [
-  // OpenAI
-  { provider: 'openai', model: 'gpt-4o', name: 'GPT-4o', description: '最新最强，推荐使用' },
+  // OpenAI - 最新模型
+  { provider: 'openai', model: 'gpt-4.5-preview', name: 'GPT-4.5 Preview', description: '最新预览版，能力最强' },
+  { provider: 'openai', model: 'gpt-4o', name: 'GPT-4o', description: '多模态旗舰模型' },
   { provider: 'openai', model: 'gpt-4o-mini', name: 'GPT-4o Mini', description: '性价比高，速度快' },
-  { provider: 'openai', model: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: '强大稳定' },
-  // Claude
-  { provider: 'claude', model: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: '最新版本，能力强' },
-  { provider: 'claude', model: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: '最强推理能力' },
-  { provider: 'claude', model: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: '快速响应' },
-  // Gemini
+  { provider: 'openai', model: 'o1', name: 'o1', description: '深度推理模型' },
+  { provider: 'openai', model: 'o1-mini', name: 'o1 Mini', description: '轻量推理模型' },
+  // Claude - 最新模型
+  { provider: 'claude', model: 'claude-opus-4', name: 'Claude Opus 4', description: '最新旗舰，能力最强' },
+  { provider: 'claude', model: 'claude-sonnet-4', name: 'Claude Sonnet 4', description: '平衡性能与速度' },
+  { provider: 'claude', model: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: '稳定可靠' },
+  { provider: 'claude', model: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: '快速响应' },
+  // Gemini - 最新模型
+  { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: '最新版本，速度快' },
+  { provider: 'gemini', model: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', description: '轻量高效' },
   { provider: 'gemini', model: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: '长上下文支持' },
-  { provider: 'gemini', model: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: '快速高效' },
+  { provider: 'gemini', model: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: '稳定快速' },
   // 兼容模型
-  { provider: 'compatible', model: 'custom', name: '自定义模型', description: '支持 OpenAI 兼容 API' },
+  { provider: 'compatible', model: 'custom', name: '自定义模型', description: '支持 OpenAI 兼容 API（Ollama/DeepSeek 等）' },
 ];
 
 // 文本类型的优化提示
