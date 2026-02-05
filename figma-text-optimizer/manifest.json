@@ -1,0 +1,16 @@
+{
+  "name": "文本智能优化助手",
+  "id": "figma-text-optimizer",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": [
+      "https://api.openai.com",
+      "https://api.anthropic.com",
+      "https://generativelanguage.googleapis.com",
+      "*"
+    ]
+  }
+}
