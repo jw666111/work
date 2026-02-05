@@ -67,21 +67,24 @@ function buildPrompt(
     : '';
 
   // 系统提示
-  const defaultSystemPrompt = `你是一个专业的 UI 文案优化专家，擅长优化各类界面文案，使其更加专业、清晰、用户友好。
+  const defaultSystemPrompt = `你是一个专业的 UI 文案优化专家。你的任务是直接输出优化后的文案。
 
-${CATEGORY_PROMPTS[category]}
+当前任务信息：
+- 文本类型：${category}（${CATEGORY_PROMPTS[category]}）
+- 上下文场景：${context}${brandTermsText}${rulesText}
 
-上下文场景：${context}${brandTermsText}${rulesText}
-
-重要要求：
-1. 保持原意，只优化表达方式
-2. 符合中文互联网产品的文案风格
-3. 遵循品牌用语规范
-4. 只返回优化后的文案，不要任何解释或额外内容`;
+【重要规则 - 必须遵守】
+1. 直接输出优化后的文案文本，不要有任何其他内容
+2. 不要提问、不要解释、不要说明理由
+3. 不要输出"优化后："或类似前缀
+4. 如果原文已经很好，可以输出相同或略微优化的版本
+5. 保持原意，符合中文互联网产品风格`;
 
   const systemPrompt = customSystemPrompt || defaultSystemPrompt;
 
-  const userPrompt = `请优化以下文案：\n\n${text}`;
+  const userPrompt = `原文案：${text}
+
+请直接输出优化后的文案（只输出文案本身，不要任何其他内容）：`;
 
   return { systemPrompt, userPrompt };
 }
