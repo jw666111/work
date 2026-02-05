@@ -24723,13 +24723,15 @@
     { provider: "openai", model: "o1", name: "o1", description: "\u6DF1\u5EA6\u63A8\u7406\u6A21\u578B" },
     { provider: "openai", model: "o1-mini", name: "o1 Mini", description: "\u8F7B\u91CF\u63A8\u7406\u6A21\u578B" },
     // Claude - 最新模型
-    { provider: "claude", model: "claude-opus-4", name: "Claude Opus 4", description: "\u6700\u65B0\u65D7\u8230\uFF0C\u80FD\u529B\u6700\u5F3A" },
+    { provider: "claude", model: "claude-opus-4-5", name: "Claude Opus 4.5", description: "\u6700\u5F3A\u65D7\u8230\uFF0C\u9876\u7EA7\u80FD\u529B" },
+    { provider: "claude", model: "claude-opus-4", name: "Claude Opus 4", description: "\u65D7\u8230\u6A21\u578B\uFF0C\u80FD\u529B\u5F3A" },
     { provider: "claude", model: "claude-sonnet-4", name: "Claude Sonnet 4", description: "\u5E73\u8861\u6027\u80FD\u4E0E\u901F\u5EA6" },
     { provider: "claude", model: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", description: "\u7A33\u5B9A\u53EF\u9760" },
     { provider: "claude", model: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", description: "\u5FEB\u901F\u54CD\u5E94" },
     // Gemini - 最新模型
-    { provider: "gemini", model: "gemini-2.0-flash", name: "Gemini 2.0 Flash", description: "\u6700\u65B0\u7248\u672C\uFF0C\u901F\u5EA6\u5FEB" },
-    { provider: "gemini", model: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite", description: "\u8F7B\u91CF\u9AD8\u6548" },
+    { provider: "gemini", model: "gemini-3-pro", name: "Gemini 3 Pro", description: "\u6700\u65B0\u65D7\u8230\uFF0C\u80FD\u529B\u6700\u5F3A" },
+    { provider: "gemini", model: "gemini-2.0-flash", name: "Gemini 2.0 Flash", description: "\u5FEB\u901F\u9AD8\u6548" },
+    { provider: "gemini", model: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite", description: "\u8F7B\u91CF\u7248\u672C" },
     { provider: "gemini", model: "gemini-1.5-pro", name: "Gemini 1.5 Pro", description: "\u957F\u4E0A\u4E0B\u6587\u652F\u6301" },
     { provider: "gemini", model: "gemini-1.5-flash", name: "Gemini 1.5 Flash", description: "\u7A33\u5B9A\u5FEB\u901F" },
     // 兼容模型

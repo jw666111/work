@@ -16,13 +16,15 @@ export const MODEL_OPTIONS: ModelOption[] = [
   { provider: 'openai', model: 'o1', name: 'o1', description: '深度推理模型' },
   { provider: 'openai', model: 'o1-mini', name: 'o1 Mini', description: '轻量推理模型' },
   // Claude - 最新模型
-  { provider: 'claude', model: 'claude-opus-4', name: 'Claude Opus 4', description: '最新旗舰，能力最强' },
+  { provider: 'claude', model: 'claude-opus-4-5', name: 'Claude Opus 4.5', description: '最强旗舰，顶级能力' },
+  { provider: 'claude', model: 'claude-opus-4', name: 'Claude Opus 4', description: '旗舰模型，能力强' },
   { provider: 'claude', model: 'claude-sonnet-4', name: 'Claude Sonnet 4', description: '平衡性能与速度' },
   { provider: 'claude', model: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: '稳定可靠' },
   { provider: 'claude', model: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: '快速响应' },
   // Gemini - 最新模型
-  { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: '最新版本，速度快' },
-  { provider: 'gemini', model: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', description: '轻量高效' },
+  { provider: 'gemini', model: 'gemini-3-pro', name: 'Gemini 3 Pro', description: '最新旗舰，能力最强' },
+  { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: '快速高效' },
+  { provider: 'gemini', model: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', description: '轻量版本' },
   { provider: 'gemini', model: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: '长上下文支持' },
   { provider: 'gemini', model: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: '稳定快速' },
   // 兼容模型
