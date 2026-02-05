@@ -87,7 +87,8 @@ ${CATEGORY_PROMPTS[category]}
 }
 
 /**
- * 调用 OpenAI API
+ * 调用 OpenAI 兼容 API
+ * 支持 OpenAI 官方、UCloud ModelVerse、DeepSeek 等兼容平台
  */
 async function callOpenAI(
   config: AIModelConfig,
@@ -95,15 +96,22 @@ async function callOpenAI(
   userPrompt: string
 ): Promise<string> {
   const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+  // 优先使用自定义模型名称，否则使用预设模型
+  const modelName = config.customModel || config.model;
   
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  // 确保 URL 格式正确
+  const apiUrl = baseUrl.endsWith('/') 
+    ? `${baseUrl}chat/completions`
+    : `${baseUrl}/chat/completions`;
+  
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${config.apiKey}`
     },
     body: JSON.stringify({
-      model: config.model,
+      model: modelName,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -114,8 +122,15 @@ async function callOpenAI(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'OpenAI API 调用失败');
+    const errorText = await response.text();
+    let errorMessage = `API 调用失败 (${response.status})`;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.error?.message || error.message || errorMessage;
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();

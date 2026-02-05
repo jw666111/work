@@ -433,10 +433,23 @@ const Settings: React.FC<SettingsProps> = ({ settings, onSave, onBack }) => {
                   editingAgent.modelConfig.provider === 'openai' ? '默认: https://api.openai.com/v1' :
                   editingAgent.modelConfig.provider === 'claude' ? '默认: https://api.anthropic.com' :
                   editingAgent.modelConfig.provider === 'gemini' ? '默认: https://generativelanguage.googleapis.com' :
-                  '输入 API 地址，如: https://api.example.com/v1'
+                  '输入 API 地址，如: https://api.modelverse.cn/v1'
                 }
               />
-              <p className="hint">使用 UCloud ModelVerse 等第三方平台时，请填写平台提供的 API 地址</p>
+            </div>
+
+            <div className="form-group">
+              <label>自定义模型名称（可选）</label>
+              <input
+                type="text"
+                value={editingAgent.modelConfig.customModel || ''}
+                onChange={(e) => setEditingAgent({
+                  ...editingAgent,
+                  modelConfig: { ...editingAgent.modelConfig, customModel: e.target.value }
+                })}
+                placeholder="留空使用上方选择的模型，或输入平台支持的模型名称"
+              />
+              <p className="hint">UCloud ModelVerse 示例: anthropic/claude-opus-4-1-20250805</p>
             </div>
 
             <button 

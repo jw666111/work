@@ -42,7 +42,8 @@ export interface AIModelConfig {
   provider: AIModelProvider;
   model: string;
   apiKey: string;
-  baseUrl?: string;  // 用于兼容模型
+  baseUrl?: string;       // 自定义 API 地址
+  customModel?: string;   // 自定义模型名称（用于第三方平台）
 }
 
 // 预设的模型选项
