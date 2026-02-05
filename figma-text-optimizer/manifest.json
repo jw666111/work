@@ -11,6 +11,7 @@
       "https://api.anthropic.com",
       "https://generativelanguage.googleapis.com",
       "*"
-    ]
+    ],
+    "reasoning": "支持用户配置自定义 AI API 地址（如本地 Ollama、DeepSeek 等兼容模型服务）"
   }
 }
