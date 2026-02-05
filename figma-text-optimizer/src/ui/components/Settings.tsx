@@ -420,20 +420,24 @@ const Settings: React.FC<SettingsProps> = ({ settings, onSave, onBack }) => {
               />
             </div>
 
-            {editingAgent.modelConfig.provider === 'compatible' && (
-              <div className="form-group">
-                <label>API Base URL</label>
-                <input
-                  type="text"
-                  value={editingAgent.modelConfig.baseUrl || ''}
-                  onChange={(e) => setEditingAgent({
-                    ...editingAgent,
-                    modelConfig: { ...editingAgent.modelConfig, baseUrl: e.target.value }
-                  })}
-                  placeholder="如：https://api.example.com/v1"
-                />
-              </div>
-            )}
+            <div className="form-group">
+              <label>API Base URL（可选，用于第三方平台）</label>
+              <input
+                type="text"
+                value={editingAgent.modelConfig.baseUrl || ''}
+                onChange={(e) => setEditingAgent({
+                  ...editingAgent,
+                  modelConfig: { ...editingAgent.modelConfig, baseUrl: e.target.value }
+                })}
+                placeholder={
+                  editingAgent.modelConfig.provider === 'openai' ? '默认: https://api.openai.com/v1' :
+                  editingAgent.modelConfig.provider === 'claude' ? '默认: https://api.anthropic.com' :
+                  editingAgent.modelConfig.provider === 'gemini' ? '默认: https://generativelanguage.googleapis.com' :
+                  '输入 API 地址，如: https://api.example.com/v1'
+                }
+              />
+              <p className="hint">使用 UCloud ModelVerse 等第三方平台时，请填写平台提供的 API 地址</p>
+            </div>
 
             <button 
               className="btn btn-secondary"

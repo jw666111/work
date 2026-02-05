@@ -124,13 +124,17 @@ async function callOpenAI(
 
 /**
  * 调用 Claude API
+ * 支持官方 API 和第三方平台（如 UCloud ModelVerse）
  */
 async function callClaude(
   config: AIModelConfig,
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const baseUrl = config.baseUrl || 'https://api.anthropic.com';
+  const apiPath = baseUrl.includes('/v1') ? '/messages' : '/v1/messages';
+  
+  const response = await fetch(`${baseUrl}${apiPath}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -148,8 +152,8 @@ async function callClaude(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Claude API 调用失败');
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error?.message || `Claude API 调用失败 (${response.status})`);
   }
 
   const data = await response.json();
@@ -158,13 +162,15 @@ async function callClaude(
 
 /**
  * 调用 Gemini API
+ * 支持官方 API 和第三方平台
  */
 async function callGemini(
   config: AIModelConfig,
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+  const baseUrl = config.baseUrl || 'https://generativelanguage.googleapis.com';
+  const url = `${baseUrl}/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
   
   const response = await fetch(url, {
     method: 'POST',

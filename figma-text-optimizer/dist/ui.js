@@ -24806,7 +24806,9 @@ ${text}`;
   function callClaude(config, systemPrompt, userPrompt) {
     return __async(this, null, function* () {
       var _a;
-      const response = yield fetch("https://api.anthropic.com/v1/messages", {
+      const baseUrl = config.baseUrl || "https://api.anthropic.com";
+      const apiPath = baseUrl.includes("/v1") ? "/messages" : "/v1/messages";
+      const response = yield fetch(`${baseUrl}${apiPath}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -24823,8 +24825,8 @@ ${text}`;
         })
       });
       if (!response.ok) {
-        const error = yield response.json();
-        throw new Error(((_a = error.error) == null ? void 0 : _a.message) || "Claude API \u8C03\u7528\u5931\u8D25");
+        const error = yield response.json().catch(() => ({}));
+        throw new Error(((_a = error.error) == null ? void 0 : _a.message) || `Claude API \u8C03\u7528\u5931\u8D25 (${response.status})`);
       }
       const data = yield response.json();
       return data.content[0].text.trim();
@@ -24833,7 +24835,8 @@ ${text}`;
   function callGemini(config, systemPrompt, userPrompt) {
     return __async(this, null, function* () {
       var _a;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+      const baseUrl = config.baseUrl || "https://generativelanguage.googleapis.com";
+      const url = `${baseUrl}/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
       const response = yield fetch(url, {
         method: "POST",
         headers: {
@@ -25403,8 +25406,8 @@ ${text}`;
                 }
               )
             ] }),
-            editingAgent.modelConfig.provider === "compatible" && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "API Base URL" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "API Base URL\uFF08\u53EF\u9009\uFF0C\u7528\u4E8E\u7B2C\u4E09\u65B9\u5E73\u53F0\uFF09" }),
               /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
                 "input",
                 {
@@ -25413,9 +25416,10 @@ ${text}`;
                   onChange: (e) => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
                     modelConfig: __spreadProps(__spreadValues({}, editingAgent.modelConfig), { baseUrl: e.target.value })
                   })),
-                  placeholder: "\u5982\uFF1Ahttps://api.example.com/v1"
+                  placeholder: editingAgent.modelConfig.provider === "openai" ? "\u9ED8\u8BA4: https://api.openai.com/v1" : editingAgent.modelConfig.provider === "claude" ? "\u9ED8\u8BA4: https://api.anthropic.com" : editingAgent.modelConfig.provider === "gemini" ? "\u9ED8\u8BA4: https://generativelanguage.googleapis.com" : "\u8F93\u5165 API \u5730\u5740\uFF0C\u5982: https://api.example.com/v1"
                 }
-              )
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "\u4F7F\u7528 UCloud ModelVerse \u7B49\u7B2C\u4E09\u65B9\u5E73\u53F0\u65F6\uFF0C\u8BF7\u586B\u5199\u5E73\u53F0\u63D0\u4F9B\u7684 API \u5730\u5740" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
               "button",
