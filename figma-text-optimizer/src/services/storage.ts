@@ -3,7 +3,9 @@ import {
   HistoryRecord, 
   AgentConfig, 
   BrandTerm, 
-  OptimizationRule 
+  OptimizationRule,
+  SavedModelConfig,
+  AIModelConfig
 } from '../types';
 
 // 存储键名
@@ -12,10 +14,40 @@ const STORAGE_KEYS = {
   HISTORY: 'figma-text-optimizer-history'
 };
 
+// 内置 Agent ID
+export const BUILTIN_AGENT_ID = 'builtin-default-optimizer';
+
+// 内置默认 Agent - 通用文案优化助手
+const BUILTIN_DEFAULT_AGENT: AgentConfig = {
+  id: BUILTIN_AGENT_ID,
+  name: '通用文案优化助手',
+  description: '适用于各类 UI 文案的智能优化',
+  systemPrompt: `你是一个专业的 UI/UX 文案优化专家，专注于中文互联网产品的文案优化。
+
+## 你的专业能力
+1. 熟悉各类 UI 组件的文案特点（按钮、标题、描述、提示等）
+2. 了解用户心理和交互设计原则
+3. 掌握简洁、清晰、有说服力的文案技巧
+
+## 优化原则
+- **简洁明了**：去除冗余词汇，保持信息密度
+- **用户视角**：使用用户熟悉的语言，避免技术黑话
+- **行动导向**：按钮和 CTA 要有明确的行动指引
+- **情感共鸣**：适当使用能引起用户共鸣的表达
+- **一致性**：保持品牌调性和术语的一致性`,
+  brandTerms: [],
+  rules: [],
+  isBuiltin: true,
+  createdAt: 0,
+  updatedAt: 0
+};
+
 // 默认设置
 export const DEFAULT_SETTINGS: PluginSettings = {
-  activeAgentId: null,
-  agents: [],
+  activeAgentId: BUILTIN_AGENT_ID,
+  agents: [BUILTIN_DEFAULT_AGENT],
+  activeModelId: null,
+  savedModels: [],
   globalBrandTerms: [],
   globalRules: [],
   historyLimit: 100
@@ -29,24 +61,27 @@ export function generateId(): string {
 }
 
 /**
- * 创建默认 Agent
+ * 创建新的自定义 Agent
  */
 export function createDefaultAgent(): AgentConfig {
   return {
     id: generateId(),
-    name: '默认优化助手',
-    description: '通用文案优化 Agent',
+    name: '新建 Agent',
+    description: '',
     systemPrompt: '',
-    modelConfig: {
-      provider: 'openai',
-      model: 'gpt-4o-mini',
-      apiKey: ''
-    },
     brandTerms: [],
     rules: [],
+    isBuiltin: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
+}
+
+/**
+ * 获取内置 Agent（确保始终存在）
+ */
+export function getBuiltinAgent(): AgentConfig {
+  return { ...BUILTIN_DEFAULT_AGENT };
 }
 
 /**
@@ -72,7 +107,38 @@ export class StorageManager {
         if (!msg) return;
         
         if (msg.type === 'settings-loaded') {
-          this.settings = msg.payload.settings;
+          // 合并默认设置，确保旧数据兼容
+          const loadedSettings = msg.payload.settings || {};
+          
+          // 迁移旧版本的 modelConfig 到新的 savedModels 结构
+          let savedModels = loadedSettings.savedModels || [];
+          let activeModelId = loadedSettings.activeModelId || null;
+          
+          if (loadedSettings.modelConfig?.apiKey && savedModels.length === 0) {
+            // 旧版本数据迁移
+            const migratedModel: SavedModelConfig = {
+              id: 'migrated-' + Date.now(),
+              name: '迁移的模型配置',
+              provider: loadedSettings.modelConfig.provider || 'openai',
+              model: loadedSettings.modelConfig.model || 'gpt-4o-mini',
+              apiKey: loadedSettings.modelConfig.apiKey,
+              baseUrl: loadedSettings.modelConfig.baseUrl,
+              customModel: loadedSettings.modelConfig.customModel,
+              createdAt: Date.now()
+            };
+            savedModels = [migratedModel];
+            activeModelId = migratedModel.id;
+          }
+          
+          this.settings = {
+            ...DEFAULT_SETTINGS,
+            ...loadedSettings,
+            savedModels,
+            activeModelId,
+            agents: loadedSettings.agents?.length > 0 
+              ? loadedSettings.agents 
+              : DEFAULT_SETTINGS.agents
+          };
         }
         if (msg.type === 'history-loaded') {
           this.history = msg.payload.history;
@@ -113,6 +179,38 @@ export class StorageManager {
   getActiveAgent(): AgentConfig | null {
     if (!this.settings.activeAgentId) return null;
     return this.settings.agents.find(a => a.id === this.settings.activeAgentId) || null;
+  }
+
+  /**
+   * 获取当前激活的模型配置
+   */
+  getActiveModel(): SavedModelConfig | null {
+    if (!this.settings.activeModelId) return null;
+    return this.settings.savedModels?.find(m => m.id === this.settings.activeModelId) || null;
+  }
+
+  /**
+   * 获取模型配置（用于 API 调用）
+   */
+  getModelConfig(): AIModelConfig | null {
+    const activeModel = this.getActiveModel();
+    if (!activeModel) return null;
+    
+    return {
+      provider: activeModel.provider,
+      model: activeModel.model,
+      apiKey: activeModel.apiKey,
+      baseUrl: activeModel.baseUrl,
+      customModel: activeModel.customModel
+    };
+  }
+
+  /**
+   * 检查模型是否已配置
+   */
+  isModelConfigured(): boolean {
+    const activeModel = this.getActiveModel();
+    return !!activeModel?.apiKey;
   }
 
   /**

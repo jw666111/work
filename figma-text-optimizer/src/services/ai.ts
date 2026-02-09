@@ -43,6 +43,12 @@ const CATEGORY_PROMPTS: Record<TextCategory, string> = {
   general: '这是一个通用界面文案。要求：简洁清晰，符合界面设计规范。'
 };
 
+// 参考样例类型
+export interface ReferenceExample {
+  original: string;
+  optimized: string;
+}
+
 /**
  * 构建优化 Prompt
  */
@@ -52,39 +58,75 @@ function buildPrompt(
   context: string,
   brandTerms: BrandTerm[],
   rules: OptimizationRule[],
-  customSystemPrompt?: string
+  customSystemPrompt?: string,
+  referenceExamples?: ReferenceExample[]
 ): { systemPrompt: string; userPrompt: string } {
   // 构建品牌词库说明
   const enabledTerms = brandTerms.filter(t => t.enabled);
   const brandTermsText = enabledTerms.length > 0
-    ? `\n\n品牌词库规范：\n${enabledTerms.map(t => `- "${t.wrong}" 应写为 "${t.correct}"`).join('\n')}`
+    ? `\n\n【品牌词库规范】\n${enabledTerms.map(t => `- "${t.wrong}" 应写为 "${t.correct}"`).join('\n')}`
     : '';
 
   // 构建自定义规则说明
   const enabledRules = rules.filter(r => r.enabled && (!r.category || r.category === category));
   const rulesText = enabledRules.length > 0
-    ? `\n\n额外优化规则：\n${enabledRules.map(r => `- ${r.content}`).join('\n')}`
+    ? `\n\n【额外优化规则】\n${enabledRules.map(r => `- ${r.content}`).join('\n')}`
     : '';
 
-  // 系统提示
-  const defaultSystemPrompt = `你是一个专业的 UI 文案优化专家。你的任务是直接输出优化后的文案。
+  // 构建参考样例说明（加强风格学习指导）
+  let referenceText = '';
+  let styleRequirement = '';
+  
+  if (referenceExamples && referenceExamples.length > 0) {
+    const ref = referenceExamples[0]; // 取第一个参考样例
+    referenceText = `
 
-当前任务信息：
+【重要：风格参考样例】
+用户选择了一个满意的优化结果作为风格参考，你必须模仿这个样例的写作风格：
+
+参考原文：${ref.original}
+参考优化结果：${ref.optimized}
+
+请分析参考样例的特点：
+- 句式结构（如"专为...打造"、"适合...的..."等）
+- 语气风格（正式/活泼/简洁等）
+- 用词习惯和表达方式
+- 文案长度和节奏`;
+
+    styleRequirement = `
+4. 【最重要】必须模仿参考样例的风格！分析参考样例的句式结构和表达方式，用相似的句式改写当前文案
+   - 如果参考样例用"专为...打造"句式，你也应该用类似句式
+   - 保持相似的语气、节奏和文案长度`;
+  }
+
+  // 当前任务上下文（始终附加）
+  const taskContext = `
+【当前任务上下文】
 - 文本类型：${category}（${CATEGORY_PROMPTS[category]}）
-- 上下文场景：${context}${brandTermsText}${rulesText}
+- 上下文场景：${context}${brandTermsText}${rulesText}${referenceText}
 
-【重要规则 - 必须遵守】
+【输出要求 - 必须遵守】
 1. 直接输出优化后的文案文本，不要有任何其他内容
 2. 不要提问、不要解释、不要说明理由
-3. 不要输出"优化后："或类似前缀
-4. 如果原文已经很好，可以输出相同或略微优化的版本
-5. 保持原意，符合中文互联网产品风格`;
+3. 不要输出"优化后："或类似前缀${styleRequirement}
+5. 如果原文已经很好且没有参考样例，可以输出相同或略微优化的版本`;
 
-  const systemPrompt = customSystemPrompt || defaultSystemPrompt;
+  // 系统提示
+  let systemPrompt: string;
+  
+  if (customSystemPrompt) {
+    // 自定义 prompt + 任务上下文
+    systemPrompt = `${customSystemPrompt}
+${taskContext}`;
+  } else {
+    // 默认提示
+    systemPrompt = `你是一个专业的 UI 文案优化专家。你的任务是直接输出优化后的文案，保持原意，符合中文互联网产品风格。
+${taskContext}`;
+  }
 
   const userPrompt = `原文案：${text}
 
-请直接输出优化后的文案（只输出文案本身，不要任何其他内容）：`;
+请直接输出优化后的文案：`;
 
   return { systemPrompt, userPrompt };
 }
@@ -228,7 +270,8 @@ export async function optimizeText(
   modelConfig: AIModelConfig,
   brandTerms: BrandTerm[] = [],
   rules: OptimizationRule[] = [],
-  customSystemPrompt?: string
+  customSystemPrompt?: string,
+  referenceExamples?: ReferenceExample[]
 ): Promise<string> {
   const { systemPrompt, userPrompt } = buildPrompt(
     text, 
@@ -236,7 +279,8 @@ export async function optimizeText(
     context, 
     brandTerms, 
     rules,
-    customSystemPrompt
+    customSystemPrompt,
+    referenceExamples
   );
 
   switch (modelConfig.provider) {
@@ -334,4 +378,93 @@ export async function batchOptimize(
   }
   
   return results;
+}
+
+// 对话消息类型
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * 对话式优化 - 支持多轮对话调整优化结果
+ */
+export async function chatOptimize(
+  originalText: string,
+  category: TextCategory,
+  context: string,
+  userMessage: string,
+  chatHistory: ChatMessage[],
+  modelConfig: AIModelConfig,
+  brandTerms: BrandTerm[] = [],
+  rules: OptimizationRule[] = []
+): Promise<string> {
+  // 构建品牌词库说明
+  const enabledTerms = brandTerms.filter(t => t.enabled);
+  const brandTermsText = enabledTerms.length > 0
+    ? `品牌词库：${enabledTerms.map(t => `"${t.wrong}"应写为"${t.correct}"`).join('，')}`
+    : '';
+
+  // 构建规则说明
+  const enabledRules = rules.filter(r => r.enabled);
+  const rulesText = enabledRules.length > 0
+    ? `优化规则：${enabledRules.map(r => r.content).join('；')}`
+    : '';
+
+  const systemPrompt = `你是一个专业的 UI 文案优化助手。你正在帮助用户优化一段界面文案。
+
+原始文案：${originalText}
+文案类型：${category}
+上下文场景：${context}
+${brandTermsText}
+${rulesText}
+
+用户会对优化结果提出调整要求，请根据要求修改文案。
+【重要】你的回复必须只包含优化后的文案本身，不要有任何解释、前缀或额外内容。`;
+
+  // 构建对话历史
+  const messages = [
+    { role: 'system' as const, content: systemPrompt },
+    ...chatHistory.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    })),
+    { role: 'user' as const, content: userMessage }
+  ];
+
+  const baseUrl = modelConfig.baseUrl || 'https://api.openai.com/v1';
+  const modelName = modelConfig.customModel || modelConfig.model;
+  
+  const apiUrl = baseUrl.endsWith('/') 
+    ? `${baseUrl}chat/completions`
+    : `${baseUrl}/chat/completions`;
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${modelConfig.apiKey}`
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages,
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `API 调用失败 (${response.status})`;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.error?.message || error.message || errorMessage;
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content.trim();
 }

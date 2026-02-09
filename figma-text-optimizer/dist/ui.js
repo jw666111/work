@@ -1130,11 +1130,11 @@
             var dispatcher = resolveDispatcher();
             return dispatcher.useReducer(reducer, initialArg, init);
           }
-          function useRef(initialValue) {
+          function useRef2(initialValue) {
             var dispatcher = resolveDispatcher();
             return dispatcher.useRef(initialValue);
           }
-          function useEffect2(create, deps) {
+          function useEffect3(create, deps) {
             var dispatcher = resolveDispatcher();
             return dispatcher.useEffect(create, deps);
           }
@@ -1917,14 +1917,14 @@
           exports.useContext = useContext;
           exports.useDebugValue = useDebugValue;
           exports.useDeferredValue = useDeferredValue;
-          exports.useEffect = useEffect2;
+          exports.useEffect = useEffect3;
           exports.useId = useId;
           exports.useImperativeHandle = useImperativeHandle;
           exports.useInsertionEffect = useInsertionEffect;
           exports.useLayoutEffect = useLayoutEffect;
           exports.useMemo = useMemo;
           exports.useReducer = useReducer;
-          exports.useRef = useRef;
+          exports.useRef = useRef2;
           exports.useState = useState4;
           exports.useSyncExternalStore = useSyncExternalStore;
           exports.useTransition = useTransition;
@@ -24503,9 +24503,35 @@
   var import_react3 = __toESM(require_react());
 
   // src/services/storage.ts
+  var BUILTIN_AGENT_ID = "builtin-default-optimizer";
+  var BUILTIN_DEFAULT_AGENT = {
+    id: BUILTIN_AGENT_ID,
+    name: "\u901A\u7528\u6587\u6848\u4F18\u5316\u52A9\u624B",
+    description: "\u9002\u7528\u4E8E\u5404\u7C7B UI \u6587\u6848\u7684\u667A\u80FD\u4F18\u5316",
+    systemPrompt: `\u4F60\u662F\u4E00\u4E2A\u4E13\u4E1A\u7684 UI/UX \u6587\u6848\u4F18\u5316\u4E13\u5BB6\uFF0C\u4E13\u6CE8\u4E8E\u4E2D\u6587\u4E92\u8054\u7F51\u4EA7\u54C1\u7684\u6587\u6848\u4F18\u5316\u3002
+
+## \u4F60\u7684\u4E13\u4E1A\u80FD\u529B
+1. \u719F\u6089\u5404\u7C7B UI \u7EC4\u4EF6\u7684\u6587\u6848\u7279\u70B9\uFF08\u6309\u94AE\u3001\u6807\u9898\u3001\u63CF\u8FF0\u3001\u63D0\u793A\u7B49\uFF09
+2. \u4E86\u89E3\u7528\u6237\u5FC3\u7406\u548C\u4EA4\u4E92\u8BBE\u8BA1\u539F\u5219
+3. \u638C\u63E1\u7B80\u6D01\u3001\u6E05\u6670\u3001\u6709\u8BF4\u670D\u529B\u7684\u6587\u6848\u6280\u5DE7
+
+## \u4F18\u5316\u539F\u5219
+- **\u7B80\u6D01\u660E\u4E86**\uFF1A\u53BB\u9664\u5197\u4F59\u8BCD\u6C47\uFF0C\u4FDD\u6301\u4FE1\u606F\u5BC6\u5EA6
+- **\u7528\u6237\u89C6\u89D2**\uFF1A\u4F7F\u7528\u7528\u6237\u719F\u6089\u7684\u8BED\u8A00\uFF0C\u907F\u514D\u6280\u672F\u9ED1\u8BDD
+- **\u884C\u52A8\u5BFC\u5411**\uFF1A\u6309\u94AE\u548C CTA \u8981\u6709\u660E\u786E\u7684\u884C\u52A8\u6307\u5F15
+- **\u60C5\u611F\u5171\u9E23**\uFF1A\u9002\u5F53\u4F7F\u7528\u80FD\u5F15\u8D77\u7528\u6237\u5171\u9E23\u7684\u8868\u8FBE
+- **\u4E00\u81F4\u6027**\uFF1A\u4FDD\u6301\u54C1\u724C\u8C03\u6027\u548C\u672F\u8BED\u7684\u4E00\u81F4\u6027`,
+    brandTerms: [],
+    rules: [],
+    isBuiltin: true,
+    createdAt: 0,
+    updatedAt: 0
+  };
   var DEFAULT_SETTINGS = {
-    activeAgentId: null,
-    agents: [],
+    activeAgentId: BUILTIN_AGENT_ID,
+    agents: [BUILTIN_DEFAULT_AGENT],
+    activeModelId: null,
+    savedModels: [],
     globalBrandTerms: [],
     globalRules: [],
     historyLimit: 100
@@ -24516,16 +24542,12 @@
   function createDefaultAgent() {
     return {
       id: generateId(),
-      name: "\u9ED8\u8BA4\u4F18\u5316\u52A9\u624B",
-      description: "\u901A\u7528\u6587\u6848\u4F18\u5316 Agent",
+      name: "\u65B0\u5EFA Agent",
+      description: "",
       systemPrompt: "",
-      modelConfig: {
-        provider: "openai",
-        model: "gpt-4o-mini",
-        apiKey: ""
-      },
       brandTerms: [],
       rules: [],
+      isBuiltin: false,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
@@ -24545,11 +24567,33 @@
           parent.postMessage({ pluginMessage: { type: "get-settings" } }, "*");
           parent.postMessage({ pluginMessage: { type: "get-history" } }, "*");
           const handler = (event) => {
+            var _a, _b;
             const msg = event.data.pluginMessage;
             if (!msg)
               return;
             if (msg.type === "settings-loaded") {
-              this.settings = msg.payload.settings;
+              const loadedSettings = msg.payload.settings || {};
+              let savedModels = loadedSettings.savedModels || [];
+              let activeModelId = loadedSettings.activeModelId || null;
+              if (((_a = loadedSettings.modelConfig) == null ? void 0 : _a.apiKey) && savedModels.length === 0) {
+                const migratedModel = {
+                  id: "migrated-" + Date.now(),
+                  name: "\u8FC1\u79FB\u7684\u6A21\u578B\u914D\u7F6E",
+                  provider: loadedSettings.modelConfig.provider || "openai",
+                  model: loadedSettings.modelConfig.model || "gpt-4o-mini",
+                  apiKey: loadedSettings.modelConfig.apiKey,
+                  baseUrl: loadedSettings.modelConfig.baseUrl,
+                  customModel: loadedSettings.modelConfig.customModel,
+                  createdAt: Date.now()
+                };
+                savedModels = [migratedModel];
+                activeModelId = migratedModel.id;
+              }
+              this.settings = __spreadProps(__spreadValues(__spreadValues({}, DEFAULT_SETTINGS), loadedSettings), {
+                savedModels,
+                activeModelId,
+                agents: ((_b = loadedSettings.agents) == null ? void 0 : _b.length) > 0 ? loadedSettings.agents : DEFAULT_SETTINGS.agents
+              });
             }
             if (msg.type === "history-loaded") {
               this.history = msg.payload.history;
@@ -24590,6 +24634,37 @@
       if (!this.settings.activeAgentId)
         return null;
       return this.settings.agents.find((a) => a.id === this.settings.activeAgentId) || null;
+    }
+    /**
+     * 获取当前激活的模型配置
+     */
+    getActiveModel() {
+      var _a;
+      if (!this.settings.activeModelId)
+        return null;
+      return ((_a = this.settings.savedModels) == null ? void 0 : _a.find((m) => m.id === this.settings.activeModelId)) || null;
+    }
+    /**
+     * 获取模型配置（用于 API 调用）
+     */
+    getModelConfig() {
+      const activeModel = this.getActiveModel();
+      if (!activeModel)
+        return null;
+      return {
+        provider: activeModel.provider,
+        model: activeModel.model,
+        apiKey: activeModel.apiKey,
+        baseUrl: activeModel.baseUrl,
+        customModel: activeModel.customModel
+      };
+    }
+    /**
+     * 检查模型是否已配置
+     */
+    isModelConfigured() {
+      const activeModel = this.getActiveModel();
+      return !!(activeModel == null ? void 0 : activeModel.apiKey);
     }
     /**
      * 设置激活的 Agent
@@ -24747,33 +24822,60 @@
     link: "\u8FD9\u662F\u4E00\u4E2A\u94FE\u63A5/\u5BFC\u822A\u6587\u6848\u3002\u8981\u6C42\uFF1A\u660E\u786E\u6307\u5411\uFF0C\u4F7F\u7528\u52A8\u5BBE\u7ED3\u6784\uFF0C\u8BA9\u7528\u6237\u77E5\u9053\u70B9\u51FB\u540E\u4F1A\u53D1\u751F\u4EC0\u4E48\u3002",
     general: "\u8FD9\u662F\u4E00\u4E2A\u901A\u7528\u754C\u9762\u6587\u6848\u3002\u8981\u6C42\uFF1A\u7B80\u6D01\u6E05\u6670\uFF0C\u7B26\u5408\u754C\u9762\u8BBE\u8BA1\u89C4\u8303\u3002"
   };
-  function buildPrompt(text, category, context, brandTerms, rules, customSystemPrompt) {
+  function buildPrompt(text, category, context, brandTerms, rules, customSystemPrompt, referenceExamples) {
     const enabledTerms = brandTerms.filter((t) => t.enabled);
     const brandTermsText = enabledTerms.length > 0 ? `
 
-\u54C1\u724C\u8BCD\u5E93\u89C4\u8303\uFF1A
+\u3010\u54C1\u724C\u8BCD\u5E93\u89C4\u8303\u3011
 ${enabledTerms.map((t) => `- "${t.wrong}" \u5E94\u5199\u4E3A "${t.correct}"`).join("\n")}` : "";
     const enabledRules = rules.filter((r) => r.enabled && (!r.category || r.category === category));
     const rulesText = enabledRules.length > 0 ? `
 
-\u989D\u5916\u4F18\u5316\u89C4\u5219\uFF1A
+\u3010\u989D\u5916\u4F18\u5316\u89C4\u5219\u3011
 ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
-    const defaultSystemPrompt = `\u4F60\u662F\u4E00\u4E2A\u4E13\u4E1A\u7684 UI \u6587\u6848\u4F18\u5316\u4E13\u5BB6\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u76F4\u63A5\u8F93\u51FA\u4F18\u5316\u540E\u7684\u6587\u6848\u3002
+    let referenceText = "";
+    let styleRequirement = "";
+    if (referenceExamples && referenceExamples.length > 0) {
+      const ref = referenceExamples[0];
+      referenceText = `
 
-\u5F53\u524D\u4EFB\u52A1\u4FE1\u606F\uFF1A
+\u3010\u91CD\u8981\uFF1A\u98CE\u683C\u53C2\u8003\u6837\u4F8B\u3011
+\u7528\u6237\u9009\u62E9\u4E86\u4E00\u4E2A\u6EE1\u610F\u7684\u4F18\u5316\u7ED3\u679C\u4F5C\u4E3A\u98CE\u683C\u53C2\u8003\uFF0C\u4F60\u5FC5\u987B\u6A21\u4EFF\u8FD9\u4E2A\u6837\u4F8B\u7684\u5199\u4F5C\u98CE\u683C\uFF1A
+
+\u53C2\u8003\u539F\u6587\uFF1A${ref.original}
+\u53C2\u8003\u4F18\u5316\u7ED3\u679C\uFF1A${ref.optimized}
+
+\u8BF7\u5206\u6790\u53C2\u8003\u6837\u4F8B\u7684\u7279\u70B9\uFF1A
+- \u53E5\u5F0F\u7ED3\u6784\uFF08\u5982"\u4E13\u4E3A...\u6253\u9020"\u3001"\u9002\u5408...\u7684..."\u7B49\uFF09
+- \u8BED\u6C14\u98CE\u683C\uFF08\u6B63\u5F0F/\u6D3B\u6CFC/\u7B80\u6D01\u7B49\uFF09
+- \u7528\u8BCD\u4E60\u60EF\u548C\u8868\u8FBE\u65B9\u5F0F
+- \u6587\u6848\u957F\u5EA6\u548C\u8282\u594F`;
+      styleRequirement = `
+4. \u3010\u6700\u91CD\u8981\u3011\u5FC5\u987B\u6A21\u4EFF\u53C2\u8003\u6837\u4F8B\u7684\u98CE\u683C\uFF01\u5206\u6790\u53C2\u8003\u6837\u4F8B\u7684\u53E5\u5F0F\u7ED3\u6784\u548C\u8868\u8FBE\u65B9\u5F0F\uFF0C\u7528\u76F8\u4F3C\u7684\u53E5\u5F0F\u6539\u5199\u5F53\u524D\u6587\u6848
+   - \u5982\u679C\u53C2\u8003\u6837\u4F8B\u7528"\u4E13\u4E3A...\u6253\u9020"\u53E5\u5F0F\uFF0C\u4F60\u4E5F\u5E94\u8BE5\u7528\u7C7B\u4F3C\u53E5\u5F0F
+   - \u4FDD\u6301\u76F8\u4F3C\u7684\u8BED\u6C14\u3001\u8282\u594F\u548C\u6587\u6848\u957F\u5EA6`;
+    }
+    const taskContext = `
+\u3010\u5F53\u524D\u4EFB\u52A1\u4E0A\u4E0B\u6587\u3011
 - \u6587\u672C\u7C7B\u578B\uFF1A${category}\uFF08${CATEGORY_PROMPTS[category]}\uFF09
-- \u4E0A\u4E0B\u6587\u573A\u666F\uFF1A${context}${brandTermsText}${rulesText}
+- \u4E0A\u4E0B\u6587\u573A\u666F\uFF1A${context}${brandTermsText}${rulesText}${referenceText}
 
-\u3010\u91CD\u8981\u89C4\u5219 - \u5FC5\u987B\u9075\u5B88\u3011
+\u3010\u8F93\u51FA\u8981\u6C42 - \u5FC5\u987B\u9075\u5B88\u3011
 1. \u76F4\u63A5\u8F93\u51FA\u4F18\u5316\u540E\u7684\u6587\u6848\u6587\u672C\uFF0C\u4E0D\u8981\u6709\u4EFB\u4F55\u5176\u4ED6\u5185\u5BB9
 2. \u4E0D\u8981\u63D0\u95EE\u3001\u4E0D\u8981\u89E3\u91CA\u3001\u4E0D\u8981\u8BF4\u660E\u7406\u7531
-3. \u4E0D\u8981\u8F93\u51FA"\u4F18\u5316\u540E\uFF1A"\u6216\u7C7B\u4F3C\u524D\u7F00
-4. \u5982\u679C\u539F\u6587\u5DF2\u7ECF\u5F88\u597D\uFF0C\u53EF\u4EE5\u8F93\u51FA\u76F8\u540C\u6216\u7565\u5FAE\u4F18\u5316\u7684\u7248\u672C
-5. \u4FDD\u6301\u539F\u610F\uFF0C\u7B26\u5408\u4E2D\u6587\u4E92\u8054\u7F51\u4EA7\u54C1\u98CE\u683C`;
-    const systemPrompt = customSystemPrompt || defaultSystemPrompt;
+3. \u4E0D\u8981\u8F93\u51FA"\u4F18\u5316\u540E\uFF1A"\u6216\u7C7B\u4F3C\u524D\u7F00${styleRequirement}
+5. \u5982\u679C\u539F\u6587\u5DF2\u7ECF\u5F88\u597D\u4E14\u6CA1\u6709\u53C2\u8003\u6837\u4F8B\uFF0C\u53EF\u4EE5\u8F93\u51FA\u76F8\u540C\u6216\u7565\u5FAE\u4F18\u5316\u7684\u7248\u672C`;
+    let systemPrompt;
+    if (customSystemPrompt) {
+      systemPrompt = `${customSystemPrompt}
+${taskContext}`;
+    } else {
+      systemPrompt = `\u4F60\u662F\u4E00\u4E2A\u4E13\u4E1A\u7684 UI \u6587\u6848\u4F18\u5316\u4E13\u5BB6\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u76F4\u63A5\u8F93\u51FA\u4F18\u5316\u540E\u7684\u6587\u6848\uFF0C\u4FDD\u6301\u539F\u610F\uFF0C\u7B26\u5408\u4E2D\u6587\u4E92\u8054\u7F51\u4EA7\u54C1\u98CE\u683C\u3002
+${taskContext}`;
+    }
     const userPrompt = `\u539F\u6587\u6848\uFF1A${text}
 
-\u8BF7\u76F4\u63A5\u8F93\u51FA\u4F18\u5316\u540E\u7684\u6587\u6848\uFF08\u53EA\u8F93\u51FA\u6587\u6848\u672C\u8EAB\uFF0C\u4E0D\u8981\u4EFB\u4F55\u5176\u4ED6\u5185\u5BB9\uFF09\uFF1A`;
+\u8BF7\u76F4\u63A5\u8F93\u51FA\u4F18\u5316\u540E\u7684\u6587\u6848\uFF1A`;
     return { systemPrompt, userPrompt };
   }
   function callOpenAI(config, systemPrompt, userPrompt) {
@@ -24874,14 +24976,15 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
     });
   }
   function optimizeText(_0, _1, _2, _3) {
-    return __async(this, arguments, function* (text, category, context, modelConfig, brandTerms = [], rules = [], customSystemPrompt) {
+    return __async(this, arguments, function* (text, category, context, modelConfig, brandTerms = [], rules = [], customSystemPrompt, referenceExamples) {
       const { systemPrompt, userPrompt } = buildPrompt(
         text,
         category,
         context,
         brandTerms,
         rules,
-        customSystemPrompt
+        customSystemPrompt,
+        referenceExamples
       );
       switch (modelConfig.provider) {
         case "openai":
@@ -24920,6 +25023,62 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
       }
     });
   }
+  function chatOptimize(_0, _1, _2, _3, _4, _5) {
+    return __async(this, arguments, function* (originalText, category, context, userMessage, chatHistory, modelConfig, brandTerms = [], rules = []) {
+      var _a;
+      const enabledTerms = brandTerms.filter((t) => t.enabled);
+      const brandTermsText = enabledTerms.length > 0 ? `\u54C1\u724C\u8BCD\u5E93\uFF1A${enabledTerms.map((t) => `"${t.wrong}"\u5E94\u5199\u4E3A"${t.correct}"`).join("\uFF0C")}` : "";
+      const enabledRules = rules.filter((r) => r.enabled);
+      const rulesText = enabledRules.length > 0 ? `\u4F18\u5316\u89C4\u5219\uFF1A${enabledRules.map((r) => r.content).join("\uFF1B")}` : "";
+      const systemPrompt = `\u4F60\u662F\u4E00\u4E2A\u4E13\u4E1A\u7684 UI \u6587\u6848\u4F18\u5316\u52A9\u624B\u3002\u4F60\u6B63\u5728\u5E2E\u52A9\u7528\u6237\u4F18\u5316\u4E00\u6BB5\u754C\u9762\u6587\u6848\u3002
+
+\u539F\u59CB\u6587\u6848\uFF1A${originalText}
+\u6587\u6848\u7C7B\u578B\uFF1A${category}
+\u4E0A\u4E0B\u6587\u573A\u666F\uFF1A${context}
+${brandTermsText}
+${rulesText}
+
+\u7528\u6237\u4F1A\u5BF9\u4F18\u5316\u7ED3\u679C\u63D0\u51FA\u8C03\u6574\u8981\u6C42\uFF0C\u8BF7\u6839\u636E\u8981\u6C42\u4FEE\u6539\u6587\u6848\u3002
+\u3010\u91CD\u8981\u3011\u4F60\u7684\u56DE\u590D\u5FC5\u987B\u53EA\u5305\u542B\u4F18\u5316\u540E\u7684\u6587\u6848\u672C\u8EAB\uFF0C\u4E0D\u8981\u6709\u4EFB\u4F55\u89E3\u91CA\u3001\u524D\u7F00\u6216\u989D\u5916\u5185\u5BB9\u3002`;
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...chatHistory.map((msg) => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        { role: "user", content: userMessage }
+      ];
+      const baseUrl = modelConfig.baseUrl || "https://api.openai.com/v1";
+      const modelName = modelConfig.customModel || modelConfig.model;
+      const apiUrl = baseUrl.endsWith("/") ? `${baseUrl}chat/completions` : `${baseUrl}/chat/completions`;
+      const response = yield fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${modelConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages,
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+      if (!response.ok) {
+        const errorText = yield response.text();
+        let errorMessage = `API \u8C03\u7528\u5931\u8D25 (${response.status})`;
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = ((_a = error.error) == null ? void 0 : _a.message) || error.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      const data = yield response.json();
+      return data.choices[0].message.content.trim();
+    });
+  }
 
   // src/services/classifier.ts
   var CATEGORY_DESCRIPTIONS = {
@@ -24952,10 +25111,29 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
     onOptimize,
     onApply,
     onIgnore,
-    onEdit
+    onEdit,
+    onChat,
+    onSetAsReference,
+    isReference = false
   }) => {
     const [isEditing, setIsEditing] = (0, import_react.useState)(false);
     const [editValue, setEditValue] = (0, import_react.useState)(item.optimized || "");
+    const [isChatMode, setIsChatMode] = (0, import_react.useState)(false);
+    const [chatHistory, setChatHistory] = (0, import_react.useState)([]);
+    const [chatInput, setChatInput] = (0, import_react.useState)("");
+    const [isSending, setIsSending] = (0, import_react.useState)(false);
+    const chatEndRef = (0, import_react.useRef)(null);
+    (0, import_react.useEffect)(() => {
+      var _a;
+      (_a = chatEndRef.current) == null ? void 0 : _a.scrollIntoView({ behavior: "smooth" });
+    }, [chatHistory]);
+    (0, import_react.useEffect)(() => {
+      if (item.optimized && chatHistory.length === 0) {
+        setChatHistory([
+          { role: "assistant", content: item.optimized }
+        ]);
+      }
+    }, [item.optimized]);
     const handleEditSave = () => {
       onEdit(editValue);
       setIsEditing(false);
@@ -24964,9 +25142,46 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
       setEditValue(item.optimized || "");
       setIsEditing(false);
     };
+    const handleSendMessage = () => __async(void 0, null, function* () {
+      if (!chatInput.trim() || isSending || !onChat)
+        return;
+      const userMessage = chatInput.trim();
+      setChatInput("");
+      setIsSending(true);
+      const newHistory = [
+        ...chatHistory,
+        { role: "user", content: userMessage }
+      ];
+      setChatHistory(newHistory);
+      try {
+        const response = yield onChat(userMessage, newHistory);
+        setChatHistory([
+          ...newHistory,
+          { role: "assistant", content: response }
+        ]);
+        onEdit(response);
+      } catch (error) {
+        setChatHistory([
+          ...newHistory,
+          { role: "assistant", content: `\u9519\u8BEF: ${error instanceof Error ? error.message : "\u8BF7\u6C42\u5931\u8D25"}` }
+        ]);
+      } finally {
+        setIsSending(false);
+      }
+    });
+    const quickOptions = [
+      "\u66F4\u7B80\u6D01\u4E00\u70B9",
+      "\u66F4\u6B63\u5F0F\u4E00\u70B9",
+      "\u66F4\u6D3B\u6CFC\u4E00\u70B9",
+      "\u6362\u4E00\u4E2A\u7248\u672C",
+      "\u52A0\u4E0A\u5F15\u5BFC\u8BED"
+    ];
+    const handleQuickOption = (option) => {
+      setChatInput(option);
+    };
     const categoryColor = CATEGORY_COLORS[item.category];
     const categoryName = CATEGORY_DESCRIPTIONS[item.category];
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `text-item ${item.isApplied ? "applied" : ""}`, children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `text-item ${item.isApplied ? "applied" : ""} ${isChatMode ? "chat-mode" : ""} ${isReference ? "is-reference" : ""}`, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "text-item-header", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "span",
@@ -24976,13 +25191,63 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
             children: categoryName
           }
         ),
+        isReference && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "reference-badge", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { width: "10", height: "10", viewBox: "0 0 16 16", fill: "currentColor", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z" }) }),
+          "\u53C2\u8003\u6837\u4F8B"
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "context", children: item.context })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "text-content", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "text-label", children: "\u539F\u6587" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "text-original", children: item.characters })
       ] }),
-      item.optimized && !isEditing && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "text-content", children: [
+      isChatMode && chatHistory.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chat-container", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chat-messages", children: [
+          chatHistory.map((msg, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `chat-message ${msg.role}`, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "message-label", children: msg.role === "user" ? "\u4F60" : "AI" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "message-content", children: msg.content })
+          ] }, index)),
+          isSending && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chat-message assistant", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "message-label", children: "AI" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "message-content", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "typing-indicator", children: "\u601D\u8003\u4E2D..." }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { ref: chatEndRef })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "quick-options", children: quickOptions.map((option, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "button",
+          {
+            className: "quick-option-btn",
+            onClick: () => handleQuickOption(option),
+            disabled: isSending,
+            children: option
+          },
+          index
+        )) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chat-input-container", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              type: "text",
+              className: "chat-input",
+              value: chatInput,
+              onChange: (e) => setChatInput(e.target.value),
+              onKeyPress: (e) => e.key === "Enter" && handleSendMessage(),
+              placeholder: "\u8F93\u5165\u8C03\u6574\u8981\u6C42\uFF0C\u5982\uFF1A\u66F4\u7B80\u6D01\u4E00\u70B9...",
+              disabled: isSending
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              className: "btn btn-sm btn-primary",
+              onClick: handleSendMessage,
+              disabled: isSending || !chatInput.trim(),
+              children: "\u53D1\u9001"
+            }
+          )
+        ] })
+      ] }),
+      !isChatMode && item.optimized && !isEditing && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "text-content", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "text-label", children: "\u4F18\u5316" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "text-optimized", children: item.optimized })
       ] }),
@@ -25003,14 +25268,25 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "text-item-actions", children: [
-        !item.optimized && !isOptimizing && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            className: "btn btn-sm btn-primary",
-            onClick: onOptimize,
-            children: "\u4F18\u5316"
-          }
-        ),
+        !item.optimized && !isOptimizing && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              className: "btn btn-sm btn-primary",
+              onClick: () => onOptimize(),
+              children: "\u4F18\u5316"
+            }
+          ),
+          onSetAsReference && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              className: `btn btn-sm ${isReference ? "btn-reference-active" : "btn-secondary"}`,
+              onClick: onSetAsReference,
+              title: isReference ? "\u5F53\u524D\u5DF2\u8BBE\u4E3A\u53C2\u8003\u6837\u4F8B" : "\u5C06\u539F\u6587\u98CE\u683C\u8BBE\u4E3A\u53C2\u8003\uFF0C\u5176\u4ED6\u540C\u7C7B\u578B\u6587\u6848\u5C06\u6A21\u4EFF\u6B64\u98CE\u683C",
+              children: isReference ? "\u2713 \u53C2\u8003\u4E2D" : "\u8BBE\u4E3A\u53C2\u8003"
+            }
+          )
+        ] }),
         isOptimizing && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-sm btn-primary", disabled: true, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "spinner-sm" }),
           "\u4F18\u5316\u4E2D..."
@@ -25024,6 +25300,23 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
               children: "\u5E94\u7528"
             }
           ),
+          onChat && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              className: `btn btn-sm ${isChatMode ? "btn-primary" : "btn-secondary"}`,
+              onClick: () => setIsChatMode(!isChatMode),
+              children: isChatMode ? "\u6536\u8D77\u5BF9\u8BDD" : "\u8C03\u6574"
+            }
+          ),
+          onSetAsReference && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              className: `btn btn-sm ${isReference ? "btn-reference-active" : "btn-secondary"}`,
+              onClick: onSetAsReference,
+              title: isReference ? "\u5F53\u524D\u5DF2\u8BBE\u4E3A\u53C2\u8003\u6837\u4F8B" : "\u8BBE\u4E3A\u53C2\u8003\u6837\u4F8B\uFF0C\u540C\u7C7B\u578B\u6587\u6848\u5C06\u53C2\u7167\u6B64\u98CE\u683C\u4F18\u5316",
+              children: isReference ? "\u2713 \u53C2\u8003\u4E2D" : "\u8BBE\u4E3A\u53C2\u8003"
+            }
+          ),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "button",
             {
@@ -25031,6 +25324,7 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
               onClick: () => {
                 setEditValue(item.optimized || "");
                 setIsEditing(true);
+                setIsChatMode(false);
               },
               children: "\u7F16\u8F91"
             }
@@ -25044,7 +25338,18 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
             }
           )
         ] }),
-        item.isApplied && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "applied-badge", children: "\u5DF2\u5E94\u7528" })
+        item.isApplied && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "applied-actions", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "applied-badge", children: "\u5DF2\u5E94\u7528" }),
+          onSetAsReference && item.optimized && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              className: `btn btn-sm ${isReference ? "btn-reference-active" : "btn-secondary"}`,
+              onClick: onSetAsReference,
+              title: isReference ? "\u5F53\u524D\u5DF2\u8BBE\u4E3A\u53C2\u8003\u6837\u4F8B" : "\u8BBE\u4E3A\u53C2\u8003\u6837\u4F8B\uFF0C\u540C\u7C7B\u578B\u6587\u6848\u5C06\u53C2\u7167\u6B64\u98CE\u683C\u4F18\u5316",
+              children: isReference ? "\u2713 \u53C2\u8003\u4E2D" : "\u8BBE\u4E3A\u53C2\u8003"
+            }
+          )
+        ] })
       ] })
     ] });
   };
@@ -25058,23 +25363,34 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
     onOptimize,
     onApply,
     onIgnore,
-    onEdit
+    onEdit,
+    onChat,
+    onSetAsReference,
+    referencesByCategory = {}
   }) => {
     if (texts.length === 0) {
       return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "empty-state", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { children: "\u6CA1\u6709\u627E\u5230\u6587\u672C" }) });
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "text-list", children: texts.map((text) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-      TextItem_default,
-      {
-        item: text,
-        isOptimizing: optimizingId === text.id,
-        onOptimize: () => onOptimize(text),
-        onApply: () => onApply(text),
-        onIgnore: () => onIgnore(text),
-        onEdit: (newOptimized) => onEdit(text, newOptimized)
-      },
-      text.id
-    )) });
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "text-list", children: texts.map((text) => {
+      const ref = referencesByCategory[text.category];
+      const isRef = !!ref && ref.original === text.characters && (ref.optimized === text.optimized || // 优化结果作为参考
+      ref.optimized === text.characters && !text.optimized);
+      return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        TextItem_default,
+        {
+          item: text,
+          isOptimizing: optimizingId === text.id,
+          onOptimize: () => onOptimize(text),
+          onApply: () => onApply(text),
+          onIgnore: () => onIgnore(text),
+          onEdit: (newOptimized) => onEdit(text, newOptimized),
+          onChat: onChat ? (message, history) => onChat(text, message, history) : void 0,
+          onSetAsReference: onSetAsReference ? () => onSetAsReference(text) : void 0,
+          isReference: isRef
+        },
+        text.id
+      );
+    }) });
   };
   var TextList_default = TextList;
 
@@ -25082,9 +25398,14 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
   var import_react2 = __toESM(require_react());
   var import_jsx_runtime3 = __toESM(require_jsx_runtime());
   var Settings = ({ settings, onSave, onBack }) => {
-    const [localSettings, setLocalSettings] = (0, import_react2.useState)(settings);
+    const safeSettings = __spreadProps(__spreadValues({}, settings), {
+      savedModels: settings.savedModels || [],
+      activeModelId: settings.activeModelId || null
+    });
+    const [localSettings, setLocalSettings] = (0, import_react2.useState)(safeSettings);
     const [view, setView] = (0, import_react2.useState)("main");
     const [editingAgent, setEditingAgent] = (0, import_react2.useState)(null);
+    const [editingModel, setEditingModel] = (0, import_react2.useState)(null);
     const [testResult, setTestResult] = (0, import_react2.useState)(null);
     const [isTesting, setIsTesting] = (0, import_react2.useState)(false);
     const [newTermWrong, setNewTermWrong] = (0, import_react2.useState)("");
@@ -25094,6 +25415,75 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
       onSave(localSettings);
       onBack();
     };
+    const handleCreateModel = () => {
+      const newModel = {
+        id: generateId(),
+        name: "",
+        provider: "openai",
+        model: "gpt-4o-mini",
+        apiKey: "",
+        baseUrl: "",
+        customModel: "",
+        createdAt: Date.now()
+      };
+      setEditingModel(newModel);
+      setTestResult(null);
+      setView("model-edit");
+    };
+    const handleEditModel = (model) => {
+      setEditingModel(__spreadValues({}, model));
+      setTestResult(null);
+      setView("model-edit");
+    };
+    const handleSaveModel = () => {
+      if (!editingModel || !editingModel.apiKey)
+        return;
+      const isCustomProvider = editingModel.provider === "compatible";
+      if (isCustomProvider && !editingModel.baseUrl)
+        return;
+      const modelOption = MODEL_OPTIONS.find((m) => m.provider === editingModel.provider && m.model === editingModel.model);
+      const autoName = isCustomProvider ? editingModel.customModel || "\u81EA\u5B9A\u4E49\u6A21\u578B" : (modelOption == null ? void 0 : modelOption.name) || editingModel.model;
+      const modelToSave = __spreadProps(__spreadValues({}, editingModel), {
+        name: autoName
+      });
+      const models = [...localSettings.savedModels];
+      const existingIndex = models.findIndex((m) => m.id === modelToSave.id);
+      if (existingIndex >= 0) {
+        models[existingIndex] = modelToSave;
+      } else {
+        models.push(modelToSave);
+      }
+      const newSettings = __spreadProps(__spreadValues({}, localSettings), {
+        savedModels: models,
+        activeModelId: localSettings.activeModelId || modelToSave.id
+      });
+      setLocalSettings(newSettings);
+      setEditingModel(null);
+      setView("main");
+    };
+    const handleDeleteModel = (modelId) => {
+      var _a;
+      const newModels = localSettings.savedModels.filter((m) => m.id !== modelId);
+      setLocalSettings(__spreadProps(__spreadValues({}, localSettings), {
+        savedModels: newModels,
+        activeModelId: localSettings.activeModelId === modelId ? ((_a = newModels[0]) == null ? void 0 : _a.id) || null : localSettings.activeModelId
+      }));
+    };
+    const handleTestConnection = () => __async(void 0, null, function* () {
+      if (!editingModel)
+        return;
+      setIsTesting(true);
+      setTestResult(null);
+      const result = yield testConnection({
+        provider: editingModel.provider,
+        model: editingModel.model,
+        apiKey: editingModel.apiKey,
+        baseUrl: editingModel.baseUrl,
+        customModel: editingModel.customModel
+      });
+      setTestResult(result);
+      setIsTesting(false);
+    });
     const handleCreateAgent = () => {
       const newAgent = createDefaultAgent();
       setEditingAgent(newAgent);
@@ -25122,22 +25512,14 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
       setView("main");
     };
     const handleDeleteAgent = (agentId) => {
-      var _a;
+      if (agentId === BUILTIN_AGENT_ID)
+        return;
       const newAgents = localSettings.agents.filter((a) => a.id !== agentId);
       setLocalSettings(__spreadProps(__spreadValues({}, localSettings), {
         agents: newAgents,
-        activeAgentId: localSettings.activeAgentId === agentId ? ((_a = newAgents[0]) == null ? void 0 : _a.id) || null : localSettings.activeAgentId
+        activeAgentId: localSettings.activeAgentId === agentId ? BUILTIN_AGENT_ID : localSettings.activeAgentId
       }));
     };
-    const handleTestConnection = () => __async(void 0, null, function* () {
-      if (!editingAgent)
-        return;
-      setIsTesting(true);
-      setTestResult(null);
-      const result = yield testConnection(editingAgent.modelConfig);
-      setTestResult(result);
-      setIsTesting(false);
-    });
     const handleAddBrandTerm = () => {
       if (!newTermWrong.trim() || !newTermCorrect.trim())
         return;
@@ -25192,24 +25574,28 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-content", children: [
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-section", children: [
           /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "section-header", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "\u4F18\u5316 Agent" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "btn btn-sm btn-secondary", onClick: handleCreateAgent, children: "+ \u65B0\u5EFA" })
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "AI \u6A21\u578B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "btn btn-sm btn-secondary", onClick: handleCreateModel, children: "+ \u65B0\u5EFA" })
           ] }),
-          localSettings.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "empty-hint", children: '\u8FD8\u6CA1\u6709 Agent\uFF0C\u70B9\u51FB"\u65B0\u5EFA"\u521B\u5EFA\u4E00\u4E2A' }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-list", children: localSettings.agents.map((agent) => {
-            var _a;
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "\u914D\u7F6E API Key \u540E\u624D\u80FD\u4F7F\u7528\u4F18\u5316\u529F\u80FD" }),
+          localSettings.savedModels.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "empty-hint", children: '\u8FD8\u6CA1\u6709\u914D\u7F6E\u6A21\u578B\uFF0C\u70B9\u51FB"\u65B0\u5EFA"\u6DFB\u52A0\u4E00\u4E2A' }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-list", children: localSettings.savedModels.map((model) => {
+            const modelOption = MODEL_OPTIONS.find((m) => m.provider === model.provider && m.model === model.model);
+            const isCustom = model.provider === "compatible";
+            const displayName = isCustom ? model.customModel || "\u81EA\u5B9A\u4E49\u6A21\u578B" : (modelOption == null ? void 0 : modelOption.name) || model.model;
+            const displayDesc = isCustom ? model.baseUrl || "\u81EA\u5B9A\u4E49 API" : (modelOption == null ? void 0 : modelOption.description) || model.provider;
             return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
               "div",
               {
-                className: `agent-item ${localSettings.activeAgentId === agent.id ? "active" : ""}`,
+                className: `agent-item ${localSettings.activeModelId === model.id ? "active" : ""}`,
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
                     "div",
                     {
                       className: "agent-info",
-                      onClick: () => setLocalSettings(__spreadProps(__spreadValues({}, localSettings), { activeAgentId: agent.id })),
+                      onClick: () => setLocalSettings(__spreadProps(__spreadValues({}, localSettings), { activeModelId: model.id })),
                       children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-name", children: agent.name }),
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-model", children: ((_a = MODEL_OPTIONS.find((m) => m.model === agent.modelConfig.model)) == null ? void 0 : _a.name) || agent.modelConfig.model })
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-name", children: displayName }),
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-desc", children: displayDesc })
                       ]
                     }
                   ),
@@ -25218,7 +25604,7 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
                       "button",
                       {
                         className: "icon-btn",
-                        onClick: () => handleEditAgent(agent),
+                        onClick: () => handleEditModel(model),
                         title: "\u7F16\u8F91",
                         children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z" }) })
                       }
@@ -25227,7 +25613,7 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
                       "button",
                       {
                         className: "icon-btn danger",
-                        onClick: () => handleDeleteAgent(agent.id),
+                        onClick: () => handleDeleteModel(model.id),
                         title: "\u5220\u9664",
                         children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor", children: [
                           /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" }),
@@ -25238,9 +25624,62 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
                   ] })
                 ]
               },
-              agent.id
+              model.id
             );
           }) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-section", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "section-header", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "\u4F18\u5316 Agent" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "btn btn-sm btn-secondary", onClick: handleCreateAgent, children: "+ \u65B0\u5EFA" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "Agent \u5B9A\u4E49\u4F18\u5316\u98CE\u683C\u548C\u63D0\u793A\u8BCD\uFF0C\u70B9\u51FB\u9009\u4E2D\u6FC0\u6D3B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-list", children: localSettings.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+            "div",
+            {
+              className: `agent-item ${localSettings.activeAgentId === agent.id ? "active" : ""}`,
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                  "div",
+                  {
+                    className: "agent-info",
+                    onClick: () => setLocalSettings(__spreadProps(__spreadValues({}, localSettings), { activeAgentId: agent.id })),
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "agent-name", children: [
+                        agent.isBuiltin && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "builtin-badge", children: "\u5185\u7F6E" }),
+                        agent.name
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agent-desc", children: agent.description })
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "agent-actions", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                    "button",
+                    {
+                      className: "icon-btn",
+                      onClick: () => handleEditAgent(agent),
+                      title: "\u7F16\u8F91",
+                      children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z" }) })
+                    }
+                  ),
+                  !agent.isBuiltin && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                    "button",
+                    {
+                      className: "icon-btn danger",
+                      onClick: () => handleDeleteAgent(agent.id),
+                      title: "\u5220\u9664",
+                      children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { fillRule: "evenodd", d: "M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" })
+                      ] })
+                    }
+                  )
+                ] })
+              ]
+            },
+            agent.id
+          )) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-section", children: [
           /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "section-header", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "\u5168\u5C40\u54C1\u724C\u8BCD\u5E93" }) }),
@@ -25333,20 +25772,117 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
         ] })
       ] })
     ] });
+    const renderModelEdit = () => {
+      if (!editingModel)
+        return null;
+      const isCustomProvider = editingModel.provider === "compatible";
+      const modelOption = MODEL_OPTIONS.find((m) => m.provider === editingModel.provider && m.model === editingModel.model);
+      return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-header", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "back-btn", onClick: () => {
+            setEditingModel(null);
+            setView("main");
+            setTestResult(null);
+          }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { fillRule: "evenodd", d: "M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z" }) }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { children: editingModel.createdAt ? "\u7F16\u8F91\u6A21\u578B" : "\u65B0\u5EFA\u6A21\u578B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
+              className: "btn btn-primary btn-sm",
+              onClick: handleSaveModel,
+              disabled: !editingModel.apiKey || isCustomProvider && !editingModel.baseUrl,
+              children: "\u4FDD\u5B58"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "settings-content", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-section", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "\u6A21\u578B\u914D\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "\u9009\u62E9\u6A21\u578B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+              "select",
+              {
+                value: `${editingModel.provider}:${editingModel.model}`,
+                onChange: (e) => {
+                  const [provider, model] = e.target.value.split(":");
+                  setEditingModel(__spreadProps(__spreadValues({}, editingModel), {
+                    provider,
+                    model,
+                    // 切换到非自定义模型时清空自定义字段
+                    baseUrl: provider === "compatible" ? editingModel.baseUrl : "",
+                    customModel: provider === "compatible" ? editingModel.customModel : ""
+                  }));
+                },
+                children: MODEL_OPTIONS.map((opt) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: `${opt.provider}:${opt.model}`, children: [
+                  opt.name,
+                  " - ",
+                  opt.description
+                ] }, `${opt.provider}:${opt.model}`))
+              }
+            )
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "API Key *" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+              "input",
+              {
+                type: "password",
+                value: editingModel.apiKey,
+                onChange: (e) => setEditingModel(__spreadProps(__spreadValues({}, editingModel), { apiKey: e.target.value })),
+                placeholder: "\u8F93\u5165\u4F60\u7684 API Key"
+              }
+            )
+          ] }),
+          isCustomProvider && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "API Base URL *" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "input",
+                {
+                  type: "text",
+                  value: editingModel.baseUrl || "",
+                  onChange: (e) => setEditingModel(__spreadProps(__spreadValues({}, editingModel), { baseUrl: e.target.value })),
+                  placeholder: "\u5982: https://api.modelverse.cn/v1"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "\u6A21\u578B\u540D\u79F0 *" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "input",
+                {
+                  type: "text",
+                  value: editingModel.customModel || "",
+                  onChange: (e) => setEditingModel(__spreadProps(__spreadValues({}, editingModel), { customModel: e.target.value })),
+                  placeholder: "\u8F93\u5165\u5E73\u53F0\u652F\u6301\u7684\u6A21\u578B\u540D\u79F0"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "UCloud ModelVerse \u793A\u4F8B: anthropic/claude-opus-4-1-20250805" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
+              className: "btn btn-secondary",
+              onClick: handleTestConnection,
+              disabled: isTesting || !editingModel.apiKey || isCustomProvider && !editingModel.baseUrl,
+              children: isTesting ? "\u6D4B\u8BD5\u4E2D..." : "\u6D4B\u8BD5\u8FDE\u63A5"
+            }
+          ),
+          testResult && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: `test-result ${testResult.success ? "success" : "error"}`, children: testResult.message })
+        ] }) })
+      ] });
+    };
     const renderAgentEdit = () => {
       if (!editingAgent)
         return null;
-      const selectedModel = MODEL_OPTIONS.find(
-        (m) => m.provider === editingAgent.modelConfig.provider && m.model === editingAgent.modelConfig.model
-      );
       return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-header", children: [
           /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "back-btn", onClick: () => {
             setEditingAgent(null);
             setView("main");
-            setTestResult(null);
           }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { fillRule: "evenodd", d: "M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z" }) }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { children: editingAgent.name ? "\u7F16\u8F91 Agent" : "\u65B0\u5EFA Agent" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { children: editingAgent.isBuiltin ? "\u7F16\u8F91\u5185\u7F6E Agent" : editingAgent.createdAt ? "\u7F16\u8F91 Agent" : "\u65B0\u5EFA Agent" }),
           /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "btn btn-primary btn-sm", onClick: handleSaveAgent, children: "\u4FDD\u5B58" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-content", children: [
@@ -25360,7 +25896,8 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
                   type: "text",
                   value: editingAgent.name,
                   onChange: (e) => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), { name: e.target.value })),
-                  placeholder: "\u5982\uFF1A\u54C1\u724CA\u4E13\u5C5E\u52A9\u624B"
+                  placeholder: "\u5982\uFF1A\u54C1\u724CA\u4E13\u5C5E\u52A9\u624B",
+                  disabled: editingAgent.isBuiltin
                 }
               )
             ] }),
@@ -25378,102 +25915,199 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-section", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "AI \u6A21\u578B\u914D\u7F6E" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "\u9009\u62E9\u6A21\u578B" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                "select",
-                {
-                  value: `${editingAgent.modelConfig.provider}:${editingAgent.modelConfig.model}`,
-                  onChange: (e) => {
-                    const [provider, model] = e.target.value.split(":");
-                    setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
-                      modelConfig: __spreadProps(__spreadValues({}, editingAgent.modelConfig), {
-                        provider,
-                        model
-                      })
-                    }));
-                  },
-                  children: MODEL_OPTIONS.map((opt) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: `${opt.provider}:${opt.model}`, children: [
-                    opt.name,
-                    " - ",
-                    opt.description
-                  ] }, `${opt.provider}:${opt.model}`))
-                }
-              )
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "section-header", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "\u81EA\u5B9A\u4E49 System Prompt" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "prompt-actions", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                  "input",
+                  {
+                    type: "file",
+                    id: "prompt-file-input",
+                    accept: ".md,.txt",
+                    style: { display: "none" },
+                    onChange: (e) => {
+                      var _a;
+                      const file = (_a = e.target.files) == null ? void 0 : _a[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          var _a2;
+                          const content = (_a2 = event.target) == null ? void 0 : _a2.result;
+                          setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), { systemPrompt: content }));
+                        };
+                        reader.readAsText(file);
+                        e.target.value = "";
+                      }
+                    }
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                  "button",
+                  {
+                    className: "btn btn-sm btn-secondary",
+                    onClick: () => {
+                      var _a;
+                      return (_a = document.getElementById("prompt-file-input")) == null ? void 0 : _a.click();
+                    },
+                    children: "\u5BFC\u5165\u6587\u6863"
+                  }
+                ),
+                editingAgent.systemPrompt && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                  "button",
+                  {
+                    className: "btn btn-sm btn-secondary",
+                    onClick: () => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), { systemPrompt: "" })),
+                    children: "\u6E05\u7A7A"
+                  }
+                )
+              ] })
             ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "\u5B9A\u4E49 AI \u7684\u89D2\u8272\u548C\u4F18\u5316\u98CE\u683C\u3002\u652F\u6301\u76F4\u63A5\u8F93\u5165\u6216\u5BFC\u5165 .md/.txt \u6587\u4EF6" }),
             /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "API Key" }),
               /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                "input",
+                "textarea",
                 {
-                  type: "password",
-                  value: editingAgent.modelConfig.apiKey,
-                  onChange: (e) => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
-                    modelConfig: __spreadProps(__spreadValues({}, editingAgent.modelConfig), { apiKey: e.target.value })
-                  })),
-                  placeholder: "\u8F93\u5165\u4F60\u7684 API Key"
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "API Base URL\uFF08\u53EF\u9009\uFF0C\u7528\u4E8E\u7B2C\u4E09\u65B9\u5E73\u53F0\uFF09" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                "input",
-                {
-                  type: "text",
-                  value: editingAgent.modelConfig.baseUrl || "",
-                  onChange: (e) => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
-                    modelConfig: __spreadProps(__spreadValues({}, editingAgent.modelConfig), { baseUrl: e.target.value })
-                  })),
-                  placeholder: editingAgent.modelConfig.provider === "openai" ? "\u9ED8\u8BA4: https://api.openai.com/v1" : editingAgent.modelConfig.provider === "claude" ? "\u9ED8\u8BA4: https://api.anthropic.com" : editingAgent.modelConfig.provider === "gemini" ? "\u9ED8\u8BA4: https://generativelanguage.googleapis.com" : "\u8F93\u5165 API \u5730\u5740\uFF0C\u5982: https://api.modelverse.cn/v1"
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "form-group", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("label", { children: "\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0\uFF08\u53EF\u9009\uFF09" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                "input",
-                {
-                  type: "text",
-                  value: editingAgent.modelConfig.customModel || "",
-                  onChange: (e) => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
-                    modelConfig: __spreadProps(__spreadValues({}, editingAgent.modelConfig), { customModel: e.target.value })
-                  })),
-                  placeholder: "\u7559\u7A7A\u4F7F\u7528\u4E0A\u65B9\u9009\u62E9\u7684\u6A21\u578B\uFF0C\u6216\u8F93\u5165\u5E73\u53F0\u652F\u6301\u7684\u6A21\u578B\u540D\u79F0"
+                  value: editingAgent.systemPrompt,
+                  onChange: (e) => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), { systemPrompt: e.target.value })),
+                  placeholder: "\u4F60\u662F\u4E00\u4E2A\u4E13\u4E1A\u7684 UI \u6587\u6848\u4F18\u5316\u4E13\u5BB6...",
+                  rows: 10
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "UCloud ModelVerse \u793A\u4F8B: anthropic/claude-opus-4-1-20250805" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-              "button",
-              {
-                className: "btn btn-secondary",
-                onClick: handleTestConnection,
-                disabled: isTesting || !editingAgent.modelConfig.apiKey,
-                children: isTesting ? "\u6D4B\u8BD5\u4E2D..." : "\u6D4B\u8BD5\u8FDE\u63A5"
-              }
-            ),
-            testResult && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: `test-result ${testResult.success ? "success" : "error"}`, children: testResult.message })
+              editingAgent.systemPrompt && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "prompt-stats", children: [
+                editingAgent.systemPrompt.length,
+                " \u5B57\u7B26"
+              ] })
+            ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-section", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "\u81EA\u5B9A\u4E49 System Prompt\uFF08\u53EF\u9009\uFF09" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "\u7559\u7A7A\u5219\u4F7F\u7528\u9ED8\u8BA4\u63D0\u793A\u8BCD\uFF0C\u586B\u5199\u540E\u5C06\u5B8C\u5168\u66FF\u4EE3\u9ED8\u8BA4\u63D0\u793A\u8BCD" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "form-group", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-              "textarea",
-              {
-                value: editingAgent.systemPrompt,
-                onChange: (e) => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), { systemPrompt: e.target.value })),
-                placeholder: "\u4F60\u662F\u4E00\u4E2A\u4E13\u4E1A\u7684 UI \u6587\u6848\u4F18\u5316\u4E13\u5BB6...",
-                rows: 6
-              }
-            ) })
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "Agent \u4E13\u5C5E\u54C1\u724C\u8BCD\uFF08\u53EF\u9009\uFF09" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "\u4EC5\u6B64 Agent \u4F7F\u7528\u7684\u54C1\u724C\u8BCD\uFF0C\u4F1A\u4E0E\u5168\u5C40\u54C1\u724C\u8BCD\u5408\u5E76" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "term-list", children: editingAgent.brandTerms.map((term) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "term-item", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "term-wrong", children: term.wrong }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "term-arrow", children: "\u2192" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "term-correct", children: term.correct }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "button",
+                {
+                  className: "icon-btn danger",
+                  onClick: () => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
+                    brandTerms: editingAgent.brandTerms.filter((t) => t.id !== term.id)
+                  })),
+                  children: "\xD7"
+                }
+              )
+            ] }, term.id)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "add-term-form", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", placeholder: "\u9519\u8BEF\u5199\u6CD5", id: "agent-term-wrong" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2192" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", placeholder: "\u6B63\u786E\u5199\u6CD5", id: "agent-term-correct" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "button",
+                {
+                  className: "btn btn-sm btn-secondary",
+                  onClick: () => {
+                    const wrongInput = document.getElementById("agent-term-wrong");
+                    const correctInput = document.getElementById("agent-term-correct");
+                    if (wrongInput.value && correctInput.value) {
+                      setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
+                        brandTerms: [...editingAgent.brandTerms, {
+                          id: generateId(),
+                          wrong: wrongInput.value,
+                          correct: correctInput.value,
+                          enabled: true
+                        }]
+                      }));
+                      wrongInput.value = "";
+                      correctInput.value = "";
+                    }
+                  },
+                  children: "\u6DFB\u52A0"
+                }
+              )
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-section", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { children: "Agent \u4E13\u5C5E\u89C4\u5219\uFF08\u53EF\u9009\uFF09" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "hint", children: "\u4EC5\u6B64 Agent \u4F7F\u7528\u7684\u89C4\u5219\uFF0C\u4F1A\u4E0E\u5168\u5C40\u89C4\u5219\u5408\u5E76" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "rule-list", children: editingAgent.rules.map((rule) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "rule-item", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { className: "checkbox-label", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                  "input",
+                  {
+                    type: "checkbox",
+                    checked: rule.enabled,
+                    onChange: () => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
+                      rules: editingAgent.rules.map(
+                        (r) => r.id === rule.id ? __spreadProps(__spreadValues({}, r), { enabled: !r.enabled }) : r
+                      )
+                    }))
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: rule.content })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "button",
+                {
+                  className: "icon-btn danger",
+                  onClick: () => setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
+                    rules: editingAgent.rules.filter((r) => r.id !== rule.id)
+                  })),
+                  children: "\xD7"
+                }
+              )
+            ] }, rule.id)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "add-rule-form", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "input",
+                {
+                  type: "text",
+                  placeholder: "\u8F93\u5165\u89C4\u5219\u5185\u5BB9",
+                  id: "agent-rule-content",
+                  onKeyPress: (e) => {
+                    if (e.key === "Enter") {
+                      const input = e.target;
+                      if (input.value) {
+                        setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
+                          rules: [...editingAgent.rules, {
+                            id: generateId(),
+                            content: input.value,
+                            enabled: true
+                          }]
+                        }));
+                        input.value = "";
+                      }
+                    }
+                  }
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "button",
+                {
+                  className: "btn btn-sm btn-secondary",
+                  onClick: () => {
+                    const input = document.getElementById("agent-rule-content");
+                    if (input.value) {
+                      setEditingAgent(__spreadProps(__spreadValues({}, editingAgent), {
+                        rules: [...editingAgent.rules, {
+                          id: generateId(),
+                          content: input.value,
+                          enabled: true
+                        }]
+                      }));
+                      input.value = "";
+                    }
+                  },
+                  children: "\u6DFB\u52A0"
+                }
+              )
+            ] })
           ] })
         ] })
       ] });
     };
     return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "settings-page", children: [
       view === "main" && renderMainSettings(),
+      view === "model-edit" && renderModelEdit(),
       view === "agent-edit" && renderAgentEdit()
     ] });
   };
@@ -25558,6 +26192,7 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
     const [optimizingId, setOptimizingId] = (0, import_react3.useState)(null);
     const [filter, setFilter] = (0, import_react3.useState)("all");
     const [error, setError] = (0, import_react3.useState)(null);
+    const [referencesByCategory, setReferencesByCategory] = (0, import_react3.useState)({});
     (0, import_react3.useEffect)(() => {
       const init = () => __async(void 0, null, function* () {
         yield storage.initialize();
@@ -25602,21 +26237,29 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
     }, []);
     const handleOptimize = (0, import_react3.useCallback)((textItem) => __async(void 0, null, function* () {
       const activeAgent = storage.getActiveAgent();
-      if (!(activeAgent == null ? void 0 : activeAgent.modelConfig.apiKey)) {
-        setError("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E Agent \u548C API Key");
+      const modelConfig = storage.getModelConfig();
+      if (!(modelConfig == null ? void 0 : modelConfig.apiKey)) {
+        setError("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E AI \u6A21\u578B\u548C API Key");
+        return;
+      }
+      if (!activeAgent) {
+        setError("\u8BF7\u5148\u9009\u62E9\u4E00\u4E2A Agent");
         return;
       }
       setOptimizingId(textItem.id);
       setError(null);
       try {
+        const reference = referencesByCategory[textItem.category];
+        const referenceExamples = reference ? [reference] : void 0;
         const optimized = yield optimizeText(
           textItem.characters,
           textItem.category,
           textItem.context,
-          activeAgent.modelConfig,
+          modelConfig,
           [...settings.globalBrandTerms, ...activeAgent.brandTerms],
           [...settings.globalRules, ...activeAgent.rules],
-          activeAgent.systemPrompt || void 0
+          activeAgent.systemPrompt || void 0,
+          referenceExamples
         );
         setTexts((prev) => prev.map(
           (t) => t.id === textItem.id ? __spreadProps(__spreadValues({}, t), { optimized }) : t
@@ -25626,7 +26269,7 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
       } finally {
         setOptimizingId(null);
       }
-    }), [settings]);
+    }), [settings, referencesByCategory]);
     const handleApply = (0, import_react3.useCallback)((textItem) => {
       if (!textItem.optimized)
         return;
@@ -25656,11 +26299,117 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
     const handleIgnore = (0, import_react3.useCallback)((textItem) => {
       setTexts((prev) => prev.filter((t) => t.id !== textItem.id));
     }, []);
+    const [isBatchOptimizing, setIsBatchOptimizing] = (0, import_react3.useState)(false);
+    const handleOptimizeAll = (0, import_react3.useCallback)(() => __async(void 0, null, function* () {
+      const activeAgent = storage.getActiveAgent();
+      const modelConfig = storage.getModelConfig();
+      if (!(modelConfig == null ? void 0 : modelConfig.apiKey)) {
+        setError("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E AI \u6A21\u578B\u548C API Key");
+        return;
+      }
+      if (!activeAgent) {
+        setError("\u8BF7\u5148\u9009\u62E9\u4E00\u4E2A Agent");
+        return;
+      }
+      const textsToOptimize = texts.filter((t) => !t.optimized && !t.isApplied);
+      if (textsToOptimize.length === 0)
+        return;
+      setIsBatchOptimizing(true);
+      setError(null);
+      for (const textItem of textsToOptimize) {
+        setOptimizingId(textItem.id);
+        try {
+          const reference = referencesByCategory[textItem.category];
+          const referenceExamples = reference ? [reference] : void 0;
+          const optimized = yield optimizeText(
+            textItem.characters,
+            textItem.category,
+            textItem.context,
+            modelConfig,
+            [...settings.globalBrandTerms, ...activeAgent.brandTerms],
+            [...settings.globalRules, ...activeAgent.rules],
+            activeAgent.systemPrompt || void 0,
+            referenceExamples
+          );
+          setTexts((prev) => prev.map(
+            (t) => t.id === textItem.id ? __spreadProps(__spreadValues({}, t), { optimized }) : t
+          ));
+        } catch (err) {
+          console.error("\u4F18\u5316\u5931\u8D25:", textItem.id, err);
+        }
+      }
+      setOptimizingId(null);
+      setIsBatchOptimizing(false);
+    }), [texts, settings, referencesByCategory]);
+    const handleApplyAll = (0, import_react3.useCallback)(() => {
+      const textsToApply = texts.filter((t) => t.optimized && !t.isApplied);
+      textsToApply.forEach((textItem) => {
+        const record = {
+          id: generateId(),
+          nodeId: textItem.id,
+          nodeName: textItem.name,
+          original: textItem.characters,
+          optimized: textItem.optimized,
+          category: textItem.category,
+          timestamp: Date.now(),
+          applied: true
+        };
+        parent.postMessage({
+          pluginMessage: {
+            type: "apply-optimization",
+            payload: {
+              nodeId: textItem.id,
+              newText: textItem.optimized,
+              record
+            }
+          }
+        }, "*");
+        storage.addHistory(record);
+      });
+      setTexts((prev) => prev.map(
+        (t) => t.optimized && !t.isApplied ? __spreadProps(__spreadValues({}, t), { isApplied: true }) : t
+      ));
+      setHistory(storage.getHistory());
+    }, [texts]);
     const handleEdit = (0, import_react3.useCallback)((textItem, newOptimized) => {
       setTexts((prev) => prev.map(
         (t) => t.id === textItem.id ? __spreadProps(__spreadValues({}, t), { optimized: newOptimized }) : t
       ));
     }, []);
+    const handleSetAsReference = (0, import_react3.useCallback)((textItem) => {
+      const referenceText = textItem.optimized || textItem.characters;
+      setReferencesByCategory((prev) => __spreadProps(__spreadValues({}, prev), {
+        [textItem.category]: {
+          original: textItem.characters,
+          optimized: referenceText
+        }
+      }));
+    }, []);
+    const handleClearReference = (0, import_react3.useCallback)((category) => {
+      setReferencesByCategory((prev) => {
+        const newRefs = __spreadValues({}, prev);
+        delete newRefs[category];
+        return newRefs;
+      });
+    }, []);
+    const handleChat = (0, import_react3.useCallback)((textItem, message, history2) => __async(void 0, null, function* () {
+      const activeAgent = storage.getActiveAgent();
+      const modelConfig = storage.getModelConfig();
+      if (!(modelConfig == null ? void 0 : modelConfig.apiKey)) {
+        throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E AI \u6A21\u578B\u548C API Key");
+      }
+      const response = yield chatOptimize(
+        textItem.characters,
+        textItem.category,
+        textItem.context,
+        message,
+        history2,
+        modelConfig,
+        [...settings.globalBrandTerms, ...(activeAgent == null ? void 0 : activeAgent.brandTerms) || []],
+        [...settings.globalRules, ...(activeAgent == null ? void 0 : activeAgent.rules) || []]
+      );
+      return response;
+    }), [settings]);
     const handleRevert = (0, import_react3.useCallback)((record) => {
       parent.postMessage({
         pluginMessage: {
@@ -25683,46 +26432,55 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
     const filteredTexts = filter === "all" ? texts : texts.filter((t) => t.category === filter);
     const optimizedCount = texts.filter((t) => t.optimized).length;
     const appliedCount = texts.filter((t) => t.isApplied).length;
-    const renderMainView = () => {
-      var _a;
-      return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_jsx_runtime5.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "header", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h1", { children: "\u6587\u672C\u667A\u80FD\u4F18\u5316\u52A9\u624B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "header-actions", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-              "button",
-              {
-                className: "icon-btn",
-                onClick: () => setView("history"),
-                title: "\u5386\u53F2\u8BB0\u5F55",
-                children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z" })
-                ] })
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-              "button",
-              {
-                className: "icon-btn",
-                onClick: () => setView("settings"),
-                title: "\u8BBE\u7F6E",
-                children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z" })
-                ] })
-              }
-            )
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "actions", children: [
+    const renderMainView = () => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_jsx_runtime5.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h1", { children: "\u6587\u672C\u667A\u80FD\u4F18\u5316\u52A9\u624B" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "header-actions", children: [
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              className: "icon-btn",
+              onClick: () => setView("history"),
+              title: "\u5386\u53F2\u8BB0\u5F55",
+              children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z" }),
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z" })
+              ] })
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              className: "icon-btn",
+              onClick: () => setView("settings"),
+              title: "\u8BBE\u7F6E",
+              children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" }),
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z" })
+              ] })
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "scan-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "section-title", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1h-3zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5zM.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5z" }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M3 4.5a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-7z" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\u626B\u63CF\u6587\u672C" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "scan-actions", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
             "button",
             {
               className: "btn btn-primary",
               onClick: () => handleScan("selection"),
               disabled: isLoading,
-              children: "\u626B\u63CF\u9009\u4E2D"
+              children: [
+                isLoading ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "spinner-sm" }) : null,
+                "\u626B\u63CF\u9009\u4E2D"
+              ]
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
@@ -25735,23 +26493,44 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
             }
           )
         ] }),
-        !((_a = storage.getActiveAgent()) == null ? void 0 : _a.modelConfig.apiKey) && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "warning-banner", children: "\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u521B\u5EFA Agent \u5E76\u914D\u7F6E API Key" }),
-        error && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "error-banner", children: [
-          error,
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "close-btn", onClick: () => setError(null), children: "\xD7" })
-        ] }),
-        texts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "filter-bar", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\u7B5B\u9009:" }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "scan-hint", children: "\u9009\u62E9 Figma \u5143\u7D20\u540E\u70B9\u51FB\u626B\u63CF\uFF0C\u6216\u626B\u63CF\u6574\u9875" })
+      ] }),
+      !storage.isModelConfigured() && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "warning-banner", children: "\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E AI \u6A21\u578B\u548C API Key" }),
+      error && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "error-banner", children: [
+        error,
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "close-btn", onClick: () => setError(null), children: "\xD7" })
+      ] }),
+      texts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "results-section", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "results-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "results-title", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z" }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M9.5 3a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v0a.5.5 0 0 1 .5-.5h3zm0 2a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v0a.5.5 0 0 1 .5-.5h3zm0 2a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v0a.5.5 0 0 1 .5-.5h3z" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\u626B\u63CF\u7ED3\u679C" }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "results-count", children: [
+            texts.length,
+            " \u4E2A\u6587\u672C"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
             "button",
             {
-              className: `filter-btn ${filter === "all" ? "active" : ""}`,
+              className: "clear-results-btn",
+              onClick: () => {
+                setTexts([]);
+                setFilter("all");
+              },
+              title: "\u6E05\u7A7A\u7ED3\u679C",
+              children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z" }) })
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "filter-tabs", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              className: `filter-tab ${filter === "all" ? "active" : ""}`,
               onClick: () => setFilter("all"),
-              children: [
-                "\u5168\u90E8 (",
-                texts.length,
-                ")"
-              ]
+              children: "\u5168\u90E8"
             }
           ),
           Object.entries(CATEGORY_DESCRIPTIONS).map(([cat, name]) => {
@@ -25761,11 +26540,8 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
             return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
               "button",
               {
-                className: `filter-btn ${filter === cat ? "active" : ""}`,
+                className: `filter-tab ${filter === cat ? "active" : ""}`,
                 onClick: () => setFilter(cat),
-                style: {
-                  borderColor: filter === cat ? CATEGORY_COLORS[cat] : void 0
-                },
                 children: [
                   name,
                   " (",
@@ -25776,40 +26552,95 @@ ${enabledRules.map((r) => `- ${r.content}`).join("\n")}` : "";
               cat
             );
           })
+        ] })
+      ] }) }),
+      Object.keys(referencesByCategory).length > 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "reference-banner", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "reference-banner-title", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\u5DF2\u8BBE\u7F6E\u53C2\u8003\u6837\u4F8B\uFF1A" })
         ] }),
-        isLoading ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "loading", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "spinner" }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\u626B\u63CF\u4E2D..." })
-        ] }) : texts.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-          TextList_default,
-          {
-            texts: filteredTexts,
-            optimizingId,
-            onOptimize: handleOptimize,
-            onApply: handleApply,
-            onIgnore: handleIgnore,
-            onEdit: handleEdit
-          }
-        ) : /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "empty-state", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: '\u9009\u62E9 Figma \u4E2D\u7684\u5143\u7D20\u540E\u70B9\u51FB"\u626B\u63CF\u9009\u4E2D"' }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: '\u6216\u70B9\u51FB"\u626B\u63CF\u6574\u9875"\u626B\u63CF\u5F53\u524D\u9875\u9762\u7684\u6240\u6709\u6587\u672C' })
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "reference-tags", children: Object.entries(referencesByCategory).map(([cat, ref]) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "reference-tag", children: [
+          CATEGORY_DESCRIPTIONS[cat],
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              className: "reference-tag-remove",
+              onClick: () => handleClearReference(cat),
+              title: "\u79FB\u9664\u53C2\u8003",
+              children: "\xD7"
+            }
+          )
+        ] }, cat)) })
+      ] }),
+      isLoading ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "loading", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "spinner" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\u626B\u63CF\u4E2D..." })
+      ] }) : texts.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        TextList_default,
+        {
+          texts: filteredTexts,
+          optimizingId,
+          onOptimize: handleOptimize,
+          onApply: handleApply,
+          onIgnore: handleIgnore,
+          onEdit: handleEdit,
+          onChat: handleChat,
+          onSetAsReference: handleSetAsReference,
+          referencesByCategory
+        }
+      ) : /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "empty-state", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("svg", { width: "48", height: "48", viewBox: "0 0 16 16", fill: "currentColor", opacity: "0.3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z" }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M9.5 3a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v0a.5.5 0 0 1 .5-.5h3zm0 2a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v0a.5.5 0 0 1 .5-.5h3zm0 2a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v0a.5.5 0 0 1 .5-.5h3z" })
         ] }),
-        texts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "status-bar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: "\u6682\u65E0\u626B\u63CF\u7ED3\u679C" })
+      ] }),
+      texts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "bottom-bar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "status-info", children: [
           /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { children: [
             "\u5DF2\u4F18\u5316 ",
             optimizedCount,
             "/",
-            texts.length,
-            " \u9879"
+            texts.length
           ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\xB7" }),
           /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { children: [
             "\u5DF2\u5E94\u7528 ",
-            appliedCount,
-            " \u9879"
+            appliedCount
           ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "batch-actions", children: [
+          optimizedCount < texts.length && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              className: "btn btn-sm btn-secondary",
+              onClick: handleOptimizeAll,
+              disabled: isBatchOptimizing || !storage.isModelConfigured(),
+              children: isBatchOptimizing ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_jsx_runtime5.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "spinner-sm" }),
+                "\u4F18\u5316\u4E2D..."
+              ] }) : `\u4F18\u5316\u5168\u90E8 (${texts.length - optimizedCount})`
+            }
+          ),
+          optimizedCount > appliedCount && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+            "button",
+            {
+              className: "btn btn-sm btn-primary",
+              onClick: handleApplyAll,
+              disabled: isBatchOptimizing,
+              children: [
+                "\u5E94\u7528\u5168\u90E8 (",
+                optimizedCount - appliedCount,
+                ")"
+              ]
+            }
+          )
         ] })
-      ] });
-    };
+      ] })
+    ] });
     return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "app", children: [
       view === "main" && renderMainView(),
       view === "settings" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(

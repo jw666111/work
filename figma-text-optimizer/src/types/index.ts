@@ -37,13 +37,26 @@ export interface HistoryRecord {
 // AI 模型类型
 export type AIModelProvider = 'openai' | 'claude' | 'gemini' | 'compatible';
 
-// AI 模型配置
+// AI 模型配置（用于 API 调用）
 export interface AIModelConfig {
   provider: AIModelProvider;
   model: string;
   apiKey: string;
   baseUrl?: string;       // 自定义 API 地址
   customModel?: string;   // 自定义模型名称（用于第三方平台）
+}
+
+// 用户保存的模型配置
+export interface SavedModelConfig {
+  id: string;
+  name: string;           // 显示名称，如 "我的 GPT-4o"
+  provider: AIModelProvider;
+  model: string;
+  apiKey: string;
+  baseUrl?: string;
+  customModel?: string;
+  isBuiltin?: boolean;    // 是否为预设模型
+  createdAt: number;
 }
 
 // 预设的模型选项
@@ -60,9 +73,9 @@ export interface AgentConfig {
   name: string;
   description: string;
   systemPrompt: string;
-  modelConfig: AIModelConfig;
   brandTerms: BrandTerm[];
   rules: OptimizationRule[];
+  isBuiltin?: boolean;      // 是否为内置 Agent
   createdAt: number;
   updatedAt: number;
 }
@@ -87,6 +100,8 @@ export interface OptimizationRule {
 export interface PluginSettings {
   activeAgentId: string | null;
   agents: AgentConfig[];
+  activeModelId: string | null;    // 当前激活的模型 ID
+  savedModels: SavedModelConfig[]; // 用户保存的模型配置列表
   globalBrandTerms: BrandTerm[];
   globalRules: OptimizationRule[];
   historyLimit: number;
