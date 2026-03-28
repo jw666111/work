@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+.sisyphus/
+test-results/
+figma-text-optimizer-release.zip
+figma-text-optimizer-release/
+figma-text-optimizer-share.zip
+figma-text-optimizer-share/
+image
